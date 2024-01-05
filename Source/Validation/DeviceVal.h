@@ -65,11 +65,11 @@ struct DeviceVal final : public DeviceBase {
         return m_WrapperVKAPI.GetVkInstance(m_Device);
     }
 
-    NRIVkProcAddress GetVkGetInstanceProcAddr() const {
+    void* GetVkGetInstanceProcAddr() const {
         return m_WrapperVKAPI.GetVkGetInstanceProcAddr(m_Device);
     }
 
-    NRIVkProcAddress GetVkGetDeviceProcAddr() const {
+    void* GetVkGetDeviceProcAddr() const {
         return m_WrapperVKAPI.GetVkGetDeviceProcAddr(m_Device);
     }
 
@@ -82,11 +82,9 @@ struct DeviceVal final : public DeviceBase {
     //================================================================================================================
     Result CreateSwapChain(const SwapChainDesc& swapChainDesc, SwapChain*& swapChain);
     void DestroySwapChain(SwapChain& swapChain);
-    Result GetDisplays(Display** displays, uint32_t& displayNum);
-    Result GetDisplaySize(Display& display, Dim_t& width, Dim_t& height);
     void SetDebugName(const char* name);
     Result GetCommandQueue(CommandQueueType commandQueueType, CommandQueue*& commandQueue);
-    Result CreateCommandAllocator(const CommandQueue& commandQueue, uint32_t nodeMask, CommandAllocator*& commandAllocator);
+    Result CreateCommandAllocator(const CommandQueue& commandQueue, CommandAllocator*& commandAllocator);
     Result CreateDescriptorPool(const DescriptorPoolDesc& descriptorPoolDesc, DescriptorPool*& descriptorPool);
     Result CreateBuffer(const BufferDesc& bufferDesc, Buffer*& buffer);
     Result CreateTexture(const TextureDesc& textureDesc, Texture*& texture);

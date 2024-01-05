@@ -32,10 +32,10 @@ static Result NRI_CALL GetCommandQueue(Device& device, CommandQueueType commandQ
     return ((DeviceVK&)device).GetCommandQueue(commandQueueType, commandQueue);
 }
 
-static Result NRI_CALL CreateCommandAllocator(const CommandQueue& commandQueue, uint32_t nodeMask, CommandAllocator*& commandAllocator)
+static Result NRI_CALL CreateCommandAllocator(const CommandQueue& commandQueue, CommandAllocator*& commandAllocator)
 {
     DeviceVK& device = ((CommandQueueVK&)commandQueue).GetDevice();
-    return device.CreateCommandAllocator(commandQueue, nodeMask, commandAllocator);
+    return device.CreateCommandAllocator(commandQueue, commandAllocator);
 }
 
 static Result NRI_CALL CreateDescriptorPool(Device& device, const DescriptorPoolDesc& descriptorPoolDesc, DescriptorPool*& descriptorPool)
@@ -307,29 +307,11 @@ static void NRI_CALL DestroySwapChain(SwapChain& swapChain)
     return ((SwapChainVK&)swapChain).GetDevice().DestroySwapChain(swapChain);
 }
 
-static Result NRI_CALL ResizeBuffers(SwapChain& swapChain, Dim_t width, Dim_t height)
-{
-    return ((SwapChainVK&)swapChain).ResizeBuffers(width, height);
-}
-
-static Result NRI_CALL GetDisplays(Device& device, nri::Display** displays, uint32_t& displayNum)
-{
-    return ((DeviceVK&)device).GetDisplays(displays, displayNum);
-}
-
-static Result NRI_CALL GetDisplaySize(Device& device, nri::Display& display, Dim_t& width, Dim_t& height)
-{
-    return ((DeviceVK&)device).GetDisplaySize(display, width, height);
-}
-
 Result DeviceVK::FillFunctionTable(SwapChainInterface& swapChainInterface) const
 {
     swapChainInterface = {};
     swapChainInterface.CreateSwapChain = ::CreateSwapChain;
     swapChainInterface.DestroySwapChain = ::DestroySwapChain;
-    swapChainInterface.ResizeBuffers = ::ResizeBuffers;
-    swapChainInterface.GetDisplays = ::GetDisplays;
-    swapChainInterface.GetDisplaySize = ::GetDisplaySize;
 
     SwapChain_PartiallyFillFunctionTableVK(swapChainInterface);
 
@@ -390,9 +372,9 @@ static Result NRI_CALL CreateQueryPool(Device& device, const QueryPoolVKDesc& qu
     return ((DeviceVK&)device).CreateQueryPool(queryPoolVKDesc, queryPool);
 }
 
-static Result NRI_CALL CreateAccelerationStructure(Device& device, const AccelerationStructureVKDesc& accelerationStructureDesc, AccelerationStructure*& accelerationStructure)
+static Result NRI_CALL CreateAccelerationStructure(Device& device, const AccelerationStructureVKDesc& accelerationStructureVKDesc, AccelerationStructure*& accelerationStructure)
 {
-    return ((DeviceVK&)device).CreateAccelerationStructure(accelerationStructureDesc, accelerationStructure);
+    return ((DeviceVK&)device).CreateAccelerationStructure(accelerationStructureVKDesc, accelerationStructure);
 }
 
 static NRIVkPhysicalDevice NRI_CALL GetVkPhysicalDevice(const Device& device)
@@ -405,14 +387,14 @@ static NRIVkInstance NRI_CALL GetVkInstance(const Device& device)
     return (VkInstance)((DeviceVK&)device);
 }
 
-static NRIVkProcAddress NRI_CALL GetVkGetInstanceProcAddr(const Device& device)
+static void* NRI_CALL GetVkGetInstanceProcAddr(const Device& device)
 {
-    return (NRIVkProcAddress)((DeviceVK&)device).GetDispatchTable().GetInstanceProcAddr;
+    return ((DeviceVK&)device).GetDispatchTable().GetInstanceProcAddr;
 }
 
-static NRIVkProcAddress NRI_CALL GetVkGetDeviceProcAddr(const Device& device)
+static void* NRI_CALL GetVkGetDeviceProcAddr(const Device& device)
 {
-    return (NRIVkProcAddress)((DeviceVK&)device).GetDispatchTable().GetDeviceProcAddr;
+    return ((DeviceVK&)device).GetDispatchTable().GetDeviceProcAddr;
 }
 
 Result DeviceVK::FillFunctionTable(WrapperVKInterface& wrapperVKInterface) const
@@ -468,7 +450,7 @@ void FillFunctionTablePipelineVK(RayTracingInterface& rayTracingInterface);
 
 Result DeviceVK::FillFunctionTable(RayTracingInterface& rayTracingInterface) const
 {
-    if (!m_IsRayTracingExtSupported)
+    if (!supportedFeatures.rayTracing)
         return Result::UNSUPPORTED;
 
     rayTracingInterface = {};
@@ -490,7 +472,7 @@ Result DeviceVK::FillFunctionTable(RayTracingInterface& rayTracingInterface) con
 
 Result DeviceVK::FillFunctionTable(MeshShaderInterface& meshShaderInterface) const
 {
-    if (!m_IsMeshShaderExtSupported)
+    if (!supportedFeatures.meshShader)
         return Result::UNSUPPORTED;
 
     meshShaderInterface = {};

@@ -27,8 +27,8 @@ static Result NRI_CALL GetCommandQueue(Device& device, CommandQueueType commandQ
     return ((DeviceVal&)device).GetCommandQueue(commandQueueType, commandQueue);
 }
 
-static Result NRI_CALL CreateCommandAllocator(const CommandQueue& commandQueue, uint32_t nodeMask, CommandAllocator*& commandAllocator) {
-    return GetDeviceVal(commandQueue).CreateCommandAllocator(commandQueue, nodeMask, commandAllocator);
+static Result NRI_CALL CreateCommandAllocator(const CommandQueue& commandQueue, CommandAllocator*& commandAllocator) {
+    return GetDeviceVal(commandQueue).CreateCommandAllocator(commandQueue, commandAllocator);
 }
 
 static Result NRI_CALL CreateDescriptorPool(Device& device, const DescriptorPoolDesc& descriptorPoolDesc, DescriptorPool*& descriptorPool) {
@@ -269,14 +269,6 @@ static void NRI_CALL DestroySwapChain(SwapChain& swapChain) {
     GetDeviceVal(swapChain).DestroySwapChain(swapChain);
 }
 
-static Result NRI_CALL GetDisplays(Device& device, Display** displays, uint32_t& displayNum) {
-    return ((DeviceVal&)device).GetDisplays(displays, displayNum);
-}
-
-static Result NRI_CALL GetDisplaySize(Device& device, Display& display, Dim_t& width, Dim_t& height) {
-    return ((DeviceVal&)device).GetDisplaySize(display, width, height);
-}
-
 Result DeviceVal::FillFunctionTable(SwapChainInterface& swapChainInterface) const {
     if (!m_IsSwapChainSupported)
         return Result::UNSUPPORTED;
@@ -284,8 +276,6 @@ Result DeviceVal::FillFunctionTable(SwapChainInterface& swapChainInterface) cons
     swapChainInterface = {};
     swapChainInterface.CreateSwapChain = ::CreateSwapChain;
     swapChainInterface.DestroySwapChain = ::DestroySwapChain;
-    swapChainInterface.GetDisplays = ::GetDisplays;
-    swapChainInterface.GetDisplaySize = ::GetDisplaySize;
 
     SwapChain_PartiallyFillFunctionTableVal(swapChainInterface);
 
@@ -298,16 +288,16 @@ Result DeviceVal::FillFunctionTable(SwapChainInterface& swapChainInterface) cons
 
 #if NRI_USE_D3D11
 
-static Result NRI_CALL CreateCommandBufferD3D11(Device& device, const CommandBufferD3D11Desc& commandBufferDesc, CommandBuffer*& commandBuffer) {
-    return ((DeviceVal&)device).CreateCommandBufferD3D11(commandBufferDesc, commandBuffer);
+static Result NRI_CALL CreateCommandBufferD3D11(Device& device, const CommandBufferD3D11Desc& commandBufferD3D11Desc, CommandBuffer*& commandBuffer) {
+    return ((DeviceVal&)device).CreateCommandBufferD3D11(commandBufferD3D11Desc, commandBuffer);
 }
 
-static Result NRI_CALL CreateBufferD3D11(Device& device, const BufferD3D11Desc& bufferDesc, Buffer*& buffer) {
-    return ((DeviceVal&)device).CreateBufferD3D11(bufferDesc, buffer);
+static Result NRI_CALL CreateBufferD3D11(Device& device, const BufferD3D11Desc& bufferD3D11Desc, Buffer*& buffer) {
+    return ((DeviceVal&)device).CreateBufferD3D11(bufferD3D11Desc, buffer);
 }
 
-static Result NRI_CALL CreateTextureD3D11(Device& device, const TextureD3D11Desc& textureDesc, Texture*& texture) {
-    return ((DeviceVal&)device).CreateTextureD3D11(textureDesc, texture);
+static Result NRI_CALL CreateTextureD3D11(Device& device, const TextureD3D11Desc& textureD3D11Desc, Texture*& texture) {
+    return ((DeviceVal&)device).CreateTextureD3D11(textureD3D11Desc, texture);
 }
 
 #endif
@@ -333,25 +323,25 @@ Result DeviceVal::FillFunctionTable(WrapperD3D11Interface& wrapperD3D11Interface
 
 #if NRI_USE_D3D12
 
-static Result NRI_CALL CreateCommandBufferD3D12(Device& device, const CommandBufferD3D12Desc& commandBufferDesc, CommandBuffer*& commandBuffer) {
-    return ((DeviceVal&)device).CreateCommandBufferD3D12(commandBufferDesc, commandBuffer);
+static Result NRI_CALL CreateCommandBufferD3D12(Device& device, const CommandBufferD3D12Desc& commandBufferD3D12Desc, CommandBuffer*& commandBuffer) {
+    return ((DeviceVal&)device).CreateCommandBufferD3D12(commandBufferD3D12Desc, commandBuffer);
 }
 
-static Result NRI_CALL CreateBufferD3D12(Device& device, const BufferD3D12Desc& bufferDesc, Buffer*& buffer) {
-    return ((DeviceVal&)device).CreateBufferD3D12(bufferDesc, buffer);
+static Result NRI_CALL CreateBufferD3D12(Device& device, const BufferD3D12Desc& bufferD3D12Desc, Buffer*& buffer) {
+    return ((DeviceVal&)device).CreateBufferD3D12(bufferD3D12Desc, buffer);
 }
 
-static Result NRI_CALL CreateTextureD3D12(Device& device, const TextureD3D12Desc& textureDesc, Texture*& texture) {
-    return ((DeviceVal&)device).CreateTextureD3D12(textureDesc, texture);
+static Result NRI_CALL CreateTextureD3D12(Device& device, const TextureD3D12Desc& textureD3D12Desc, Texture*& texture) {
+    return ((DeviceVal&)device).CreateTextureD3D12(textureD3D12Desc, texture);
 }
 
-static Result NRI_CALL CreateMemoryD3D12(Device& device, const MemoryD3D12Desc& memoryDesc, Memory*& memory) {
-    return ((DeviceVal&)device).CreateMemoryD3D12(memoryDesc, memory);
+static Result NRI_CALL CreateMemoryD3D12(Device& device, const MemoryD3D12Desc& memoryD3D12Desc, Memory*& memory) {
+    return ((DeviceVal&)device).CreateMemoryD3D12(memoryD3D12Desc, memory);
 }
 
 static Result NRI_CALL
-CreateAccelerationStructureD3D12(Device& device, const AccelerationStructureD3D12Desc& accelerationStructureDesc, AccelerationStructure*& accelerationStructure) {
-    return ((DeviceVal&)device).CreateAccelerationStructureD3D12(accelerationStructureDesc, accelerationStructure);
+CreateAccelerationStructureD3D12(Device& device, const AccelerationStructureD3D12Desc& accelerationStructureD3D12Desc, AccelerationStructure*& accelerationStructure) {
+    return ((DeviceVal&)device).CreateAccelerationStructureD3D12(accelerationStructureD3D12Desc, accelerationStructure);
 }
 
 #endif
@@ -420,8 +410,8 @@ static Result NRI_CALL CreateQueryPoolVK(Device& device, const QueryPoolVKDesc& 
     return ((DeviceVal&)device).CreateQueryPoolVK(queryPoolVKDesc, queryPool);
 }
 
-static Result NRI_CALL CreateAccelerationStructureVK(Device& device, const AccelerationStructureVKDesc& accelerationStructureDesc, AccelerationStructure*& accelerationStructure) {
-    return ((DeviceVal&)device).CreateAccelerationStructureVK(accelerationStructureDesc, accelerationStructure);
+static Result NRI_CALL CreateAccelerationStructureVK(Device& device, const AccelerationStructureVKDesc& accelerationStructureVKDesc, AccelerationStructure*& accelerationStructure) {
+    return ((DeviceVal&)device).CreateAccelerationStructureVK(accelerationStructureVKDesc, accelerationStructure);
 }
 
 static NRIVkPhysicalDevice NRI_CALL GetVkPhysicalDevice(const Device& device) {

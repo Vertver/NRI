@@ -32,10 +32,8 @@ static Result NRI_CALL GetCommandQueue(Device& device, CommandQueueType commandQ
     return ((DeviceD3D11&)device).GetCommandQueue(commandQueueType, commandQueue);
 }
 
-static Result NRI_CALL CreateCommandAllocator(const CommandQueue& commandQueue, uint32_t nodeMask, CommandAllocator*& commandAllocator)
+static Result NRI_CALL CreateCommandAllocator(const CommandQueue& commandQueue, CommandAllocator*& commandAllocator)
 {
-    MaybeUnused(nodeMask);
-
     DeviceD3D11& device = ((CommandQueueD3D11&)commandQueue).GetDevice();
     return device.CreateCommandAllocator(commandQueue, commandAllocator);
 }
@@ -328,29 +326,11 @@ static void NRI_CALL DestroySwapChain(SwapChain& swapChain)
     return device.DestroySwapChain(swapChain);
 }
 
-static Result NRI_CALL ResizeBuffers(SwapChain& swapChain, Dim_t width, Dim_t height)
-{
-    return ((SwapChainD3D11&)swapChain).ResizeBuffers(width, height);
-}
-
-static Result NRI_CALL GetDisplays(Device& device, Display** displays, uint32_t& displayNum)
-{
-    return ((DeviceD3D11&)device).GetDisplays(displays, displayNum);
-}
-
-static Result NRI_CALL GetDisplaySize(Device& device, Display& display, Dim_t& width, Dim_t& height)
-{
-    return ((DeviceD3D11&)device).GetDisplaySize(display, width, height);
-}
-
 Result DeviceD3D11::FillFunctionTable(SwapChainInterface& swapChainInterface) const
 {
     swapChainInterface = {};
     swapChainInterface.CreateSwapChain = ::CreateSwapChain;
     swapChainInterface.DestroySwapChain = ::DestroySwapChain;
-    swapChainInterface.ResizeBuffers = ::ResizeBuffers;
-    swapChainInterface.GetDisplays = ::GetDisplays;
-    swapChainInterface.GetDisplaySize = ::GetDisplaySize;
 
     SwapChain_PartiallyFillFunctionTableD3D11(swapChainInterface);
 
@@ -361,19 +341,19 @@ Result DeviceD3D11::FillFunctionTable(SwapChainInterface& swapChainInterface) co
 
 #pragma region [  WrapperD3D11  ]
 
-static Result NRI_CALL CreateCommandBuffer(Device& device, const CommandBufferD3D11Desc& commandBufferDesc, CommandBuffer*& commandBuffer)
+static Result NRI_CALL CreateCommandBuffer(Device& device, const CommandBufferD3D11Desc& commandBufferD3D11Desc, CommandBuffer*& commandBuffer)
 {
     DeviceD3D11& deviceD3D11 = (DeviceD3D11&)device;
 
-    return ::CreateCommandBuffer(deviceD3D11, (ID3D11DeviceContext*)commandBufferDesc.d3d11DeviceContext, commandBuffer);
+    return ::CreateCommandBuffer(deviceD3D11, commandBufferD3D11Desc.d3d11DeviceContext, commandBuffer);
 }
 
-static Result NRI_CALL CreateBuffer(Device& device, const BufferD3D11Desc& bufferDesc, Buffer*& buffer)
+static Result NRI_CALL CreateBuffer(Device& device, const BufferD3D11Desc& bufferD3D11Desc, Buffer*& buffer)
 {
     DeviceD3D11& deviceD3D11 = (DeviceD3D11&)device;
 
     BufferD3D11* implementation = Allocate<BufferD3D11>(deviceD3D11.GetStdAllocator(), deviceD3D11);
-    const nri::Result res = implementation->Create(bufferDesc);
+    const nri::Result res = implementation->Create(bufferD3D11Desc);
 
     if (res == nri::Result::SUCCESS)
     {
@@ -386,12 +366,12 @@ static Result NRI_CALL CreateBuffer(Device& device, const BufferD3D11Desc& buffe
     return res;
 }
 
-static Result NRI_CALL CreateTexture(Device& device, const TextureD3D11Desc& textureDesc, Texture*& texture)
+static Result NRI_CALL CreateTexture(Device& device, const TextureD3D11Desc& textureD3D11Desc, Texture*& texture)
 {
     DeviceD3D11& deviceD3D11 = (DeviceD3D11&)device;
 
     TextureD3D11* implementation = Allocate<TextureD3D11>(deviceD3D11.GetStdAllocator(), deviceD3D11);
-    const nri::Result res = implementation->Create(textureDesc);
+    const nri::Result res = implementation->Create(textureD3D11Desc);
 
     if (res == nri::Result::SUCCESS)
     {

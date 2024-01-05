@@ -72,21 +72,10 @@ void DeviceVal::RegisterMemoryType(MemoryType memoryType, MemoryLocation memoryL
 
 Result DeviceVal::CreateSwapChain(const SwapChainDesc& swapChainDesc, SwapChain*& swapChain) {
     RETURN_ON_FAILURE(this, swapChainDesc.commandQueue != nullptr, Result::INVALID_ARGUMENT, "CreateSwapChain: 'swapChainDesc.commandQueue' is NULL");
-    RETURN_ON_FAILURE(this, swapChainDesc.windowSystemType < WindowSystemType::MAX_NUM, Result::INVALID_ARGUMENT, "CreateSwapChain: 'swapChainDesc.windowSystemType' is invalid");
     RETURN_ON_FAILURE(this, swapChainDesc.width != 0, Result::INVALID_ARGUMENT, "CreateSwapChain: 'swapChainDesc.width' is 0");
     RETURN_ON_FAILURE(this, swapChainDesc.height != 0, Result::INVALID_ARGUMENT, "CreateSwapChain: 'swapChainDesc.height' is 0");
     RETURN_ON_FAILURE(this, swapChainDesc.textureNum > 0, Result::INVALID_ARGUMENT, "CreateSwapChain: 'swapChainDesc.textureNum' is invalid");
     RETURN_ON_FAILURE(this, swapChainDesc.format < SwapChainFormat::MAX_NUM, Result::INVALID_ARGUMENT, "CreateSwapChain: 'swapChainDesc.format' is invalid");
-
-    if (swapChainDesc.windowSystemType == WindowSystemType::WINDOWS) {
-        RETURN_ON_FAILURE(this, swapChainDesc.window.windows.hwnd != nullptr, Result::INVALID_ARGUMENT, "CreateSwapChain: 'swapChainDesc.window.windows.hwnd' is NULL");
-    } else if (swapChainDesc.windowSystemType == WindowSystemType::X11) {
-        RETURN_ON_FAILURE(this, swapChainDesc.window.x11.dpy != nullptr, Result::INVALID_ARGUMENT, "CreateSwapChain: 'swapChainDesc.window.x11.dpy' is NULL");
-        RETURN_ON_FAILURE(this, swapChainDesc.window.x11.window != 0, Result::INVALID_ARGUMENT, "CreateSwapChain: 'swapChainDesc.window.x11.window' is NULL");
-    } else if (swapChainDesc.windowSystemType == WindowSystemType::WAYLAND) {
-        RETURN_ON_FAILURE(this, swapChainDesc.window.wayland.display != nullptr, Result::INVALID_ARGUMENT, "CreateSwapChain: 'swapChainDesc.window.wayland.display' is NULL");
-        RETURN_ON_FAILURE(this, swapChainDesc.window.wayland.surface != 0, Result::INVALID_ARGUMENT, "CreateSwapChain: 'swapChainDesc.window.wayland.surface' is NULL");
-    }
 
     auto swapChainDescImpl = swapChainDesc;
     swapChainDescImpl.commandQueue = NRI_GET_IMPL(CommandQueue, swapChainDesc.commandQueue);
@@ -105,16 +94,6 @@ Result DeviceVal::CreateSwapChain(const SwapChainDesc& swapChainDesc, SwapChain*
 void DeviceVal::DestroySwapChain(SwapChain& swapChain) {
     m_SwapChainAPI.DestroySwapChain(*NRI_GET_IMPL(SwapChain, &swapChain));
     Deallocate(GetStdAllocator(), (SwapChainVal*)&swapChain);
-}
-
-Result DeviceVal::GetDisplays(Display** displays, uint32_t& displayNum) {
-    RETURN_ON_FAILURE(this, displayNum == 0 || displays != nullptr, Result::INVALID_ARGUMENT, "GetDisplays: 'displays' is NULL");
-
-    return m_SwapChainAPI.GetDisplays(m_Device, displays, displayNum);
-}
-
-Result DeviceVal::GetDisplaySize(Display& display, Dim_t& width, Dim_t& height) {
-    return m_SwapChainAPI.GetDisplaySize(m_Device, display, width, height);
 }
 
 void DeviceVal::SetDebugName(const char* name) {
@@ -143,11 +122,11 @@ Result DeviceVal::GetCommandQueue(CommandQueueType commandQueueType, CommandQueu
     return result;
 }
 
-Result DeviceVal::CreateCommandAllocator(const CommandQueue& commandQueue, uint32_t nodeMask, CommandAllocator*& commandAllocator) {
+Result DeviceVal::CreateCommandAllocator(const CommandQueue& commandQueue, CommandAllocator*& commandAllocator) {
     auto commandQueueImpl = NRI_GET_IMPL(CommandQueue, &commandQueue);
 
     CommandAllocator* commandAllocatorImpl = nullptr;
-    const Result result = m_CoreAPI.CreateCommandAllocator(*commandQueueImpl, nodeMask, commandAllocatorImpl);
+    const Result result = m_CoreAPI.CreateCommandAllocator(*commandQueueImpl, commandAllocatorImpl);
 
     if (result == Result::SUCCESS) {
         RETURN_ON_FAILURE(this, commandAllocatorImpl != nullptr, Result::FAILURE, "CreateCommandAllocator: 'impl' is NULL");

@@ -42,6 +42,7 @@ struct DispatchTable
 
 #if VK_USE_PLATFORM_WIN32_KHR
     VULKAN_FUNCTION(CreateWin32SurfaceKHR);
+    VULKAN_FUNCTION(GetMemoryWin32HandlePropertiesKHR);
 #endif
 #if VK_USE_PLATFORM_METAL_EXT
     VULKAN_FUNCTION(CreateMetalSurfaceEXT);
@@ -150,8 +151,6 @@ struct DispatchTable
     VULKAN_FUNCTION(SetDebugUtilsObjectNameEXT);
     VULKAN_FUNCTION(CmdBeginDebugUtilsLabelEXT);
     VULKAN_FUNCTION(CmdEndDebugUtilsLabelEXT);
-
-    VULKAN_FUNCTION(SetHdrMetadataEXT);
 
     VULKAN_FUNCTION(CreateAccelerationStructureKHR);
     VULKAN_FUNCTION(CreateRayTracingPipelinesKHR);

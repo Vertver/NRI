@@ -28,9 +28,9 @@ static Result NRI_CALL SwapChainPresent(SwapChain& swapChain)
     return ((SwapChainVK&)swapChain).Present();
 }
 
-static Result NRI_CALL SetSwapChainHdrMetadata(SwapChain& swapChain, const HdrMetadata& hdrMetadata)
+static Result NRI_CALL GetDisplayDesc(SwapChain& swapChain, DisplayDesc& displayDesc)
 {
-    return ((SwapChainVK&)swapChain).SetHdrMetadata(hdrMetadata);
+    return ((SwapChainVK&)swapChain).GetDisplayDesc(displayDesc);
 }
 
 Define_SwapChain_PartiallyFillFunctionTable(VK)

@@ -30,9 +30,9 @@ static Result NRI_CALL SwapChainPresent(SwapChain& swapChain)
     return ((SwapChainD3D12&)swapChain).Present();
 }
 
-static Result NRI_CALL SetSwapChainHdrMetadata(SwapChain& swapChain, const HdrMetadata& hdrMetadata)
+static Result NRI_CALL GetDisplayDesc(SwapChain& swapChain, DisplayDesc& displayDesc)
 {
-    return ((SwapChainD3D12&)swapChain).SetHdrMetadata(hdrMetadata);
+    return ((SwapChainD3D12&)swapChain).GetDisplayDesc(displayDesc);
 }
 
 #pragma endregion

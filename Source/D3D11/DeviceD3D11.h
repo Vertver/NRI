@@ -32,7 +32,6 @@ struct DeviceD3D11 final : public DeviceBase
     inline const CoreInterface& GetCoreInterface() const
     { return m_CoreInterface; }
 
-    bool GetOutput(Display* display, ComPtr<IDXGIOutput>& output) const;
     Result Create(const DeviceCreationDesc& deviceCreationDesc, ID3D11Device* precreatedDevice, AGSContext* agsContext);
 
     //================================================================================================================
@@ -47,8 +46,6 @@ struct DeviceD3D11 final : public DeviceBase
 
     Result CreateSwapChain(const SwapChainDesc& swapChainDesc, SwapChain*& swapChain);
     void DestroySwapChain(SwapChain& swapChain);
-    Result GetDisplays(Display** displays, uint32_t& displayNum);
-    Result GetDisplaySize(Display& display, Dim_t& width, Dim_t& height);
 
     Result GetCommandQueue(CommandQueueType commandQueueType, CommandQueue*& commandQueue);
     Result CreateCommandAllocator(const CommandQueue& commandQueue, CommandAllocator*& commandAllocator);
@@ -99,8 +96,8 @@ private:
     void InitVersionedDevice(bool isDeferredContextsEmulationRequested);
     void InitVersionedContext();
 
-    template<typename Implementation, typename Interface, typename ConstructorArg, typename ... Args>
-    nri::Result CreateImplementationWithNonEmptyConstructor(Interface*& entity, ConstructorArg&& constructorArg, const Args&... args);
+    template<typename Implementation, typename Interface, typename ... Args>
+    Result CreateImplementation(Interface*& entity, const Args&... args);
 
 private:
     // don't sort - ~D3D11Extensions must be called last!

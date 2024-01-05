@@ -32,10 +32,8 @@ static Result NRI_CALL GetCommandQueue(Device& device, CommandQueueType commandQ
     return ((DeviceD3D12&)device).GetCommandQueue(commandQueueType, commandQueue);
 }
 
-static Result NRI_CALL CreateCommandAllocator(const CommandQueue& commandQueue, uint32_t nodeMask, CommandAllocator*& commandAllocator)
+static Result NRI_CALL CreateCommandAllocator(const CommandQueue& commandQueue, CommandAllocator*& commandAllocator)
 {
-    MaybeUnused(nodeMask); // TODO: use it
-
     DeviceD3D12& device = ((CommandQueueD3D12&)commandQueue).GetDevice();
     return device.CreateCommandAllocator(commandQueue, commandAllocator);
 }
@@ -322,29 +320,11 @@ static void NRI_CALL DestroySwapChain(SwapChain& swapChain)
     device.DestroySwapChain(swapChain);
 }
 
-static Result NRI_CALL ResizeBuffers(SwapChain& swapChain, Dim_t width, Dim_t height)
-{
-    return ((SwapChainD3D12&)swapChain).ResizeBuffers(width, height);
-}
-
-static Result NRI_CALL GetDisplays(Device& device, Display** displays, uint32_t& displayNum)
-{
-    return ((DeviceD3D12&)device).GetDisplays(displays, displayNum);
-}
-
-static Result NRI_CALL GetDisplaySize(Device& device, Display& display, Dim_t& width, Dim_t& height)
-{
-    return ((DeviceD3D12&)device).GetDisplaySize(display, width, height);
-}
-
 Result DeviceD3D12::FillFunctionTable(SwapChainInterface& swapChainInterface) const
 {
     swapChainInterface = {};
     swapChainInterface.CreateSwapChain = ::CreateSwapChain;
     swapChainInterface.DestroySwapChain = ::DestroySwapChain;
-    swapChainInterface.ResizeBuffers = ::ResizeBuffers;
-    swapChainInterface.GetDisplays = ::GetDisplays;
-    swapChainInterface.GetDisplaySize = ::GetDisplaySize;
 
     SwapChain_PartiallyFillFunctionTableD3D12(swapChainInterface);
 
@@ -355,29 +335,29 @@ Result DeviceD3D12::FillFunctionTable(SwapChainInterface& swapChainInterface) co
 
 #pragma region [  WrapperD3D12  ]
 
-static Result NRI_CALL CreateCommandBuffer(Device& device, const CommandBufferD3D12Desc& commandBufferDesc, CommandBuffer*& commandBuffer)
+static Result NRI_CALL CreateCommandBuffer(Device& device, const CommandBufferD3D12Desc& commandBufferD3D12Desc, CommandBuffer*& commandBuffer)
 {
-    return ((DeviceD3D12&)device).CreateCommandBuffer(commandBufferDesc, commandBuffer);
+    return ((DeviceD3D12&)device).CreateCommandBuffer(commandBufferD3D12Desc, commandBuffer);
 }
 
-static Result NRI_CALL CreateBuffer(Device& device, const BufferD3D12Desc& bufferDesc, Buffer*& buffer)
+static Result NRI_CALL CreateBuffer(Device& device, const BufferD3D12Desc& bufferD3D12Desc, Buffer*& buffer)
 {
-    return ((DeviceD3D12&)device).CreateBuffer(bufferDesc, buffer);
+    return ((DeviceD3D12&)device).CreateBuffer(bufferD3D12Desc, buffer);
 }
 
-static Result NRI_CALL CreateTexture(Device& device, const TextureD3D12Desc& textureDesc, Texture*& texture)
+static Result NRI_CALL CreateTexture(Device& device, const TextureD3D12Desc& textureD3D12Desc, Texture*& texture)
 {
-    return ((DeviceD3D12&)device).CreateTexture(textureDesc, texture);
+    return ((DeviceD3D12&)device).CreateTexture(textureD3D12Desc, texture);
 }
 
-static Result NRI_CALL CreateMemory(Device& device, const MemoryD3D12Desc& memoryDesc, Memory*& memory)
+static Result NRI_CALL CreateMemory(Device& device, const MemoryD3D12Desc& memoryD3D12Desc, Memory*& memory)
 {
-    return ((DeviceD3D12&)device).CreateMemory(memoryDesc, memory);
+    return ((DeviceD3D12&)device).CreateMemory(memoryD3D12Desc, memory);
 }
 
-static Result NRI_CALL CreateAccelerationStructure(Device& device, const AccelerationStructureD3D12Desc& accelerationStructureDesc, AccelerationStructure*& memory)
+static Result NRI_CALL CreateAccelerationStructure(Device& device, const AccelerationStructureD3D12Desc& accelerationStructureD3D12Desc, AccelerationStructure*& memory)
 {
-    return ((DeviceD3D12&)device).CreateAccelerationStructure(accelerationStructureDesc, memory);
+    return ((DeviceD3D12&)device).CreateAccelerationStructure(accelerationStructureD3D12Desc, memory);
 }
 
 Result DeviceD3D12::FillFunctionTable(WrapperD3D12Interface& wrapperD3D12Interface) const

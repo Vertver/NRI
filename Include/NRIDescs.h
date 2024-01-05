@@ -41,6 +41,7 @@ static const uint32_t NRI_CONST_NAME(ALL_SAMPLES) = (uint32_t)(-1);
 static const uint32_t NRI_CONST_NAME(ALL_NODES) = 0;
 static const bool NRI_CONST_NAME(VARIABLE_DESCRIPTOR_NUM) = true;
 static const bool NRI_CONST_NAME(DESCRIPTOR_ARRAY) = true;
+static const uint32_t NRI_CONST_NAME(OUT_OF_DATE) = (uint32_t)(-1); // VK only: swap chain is out of date
 
 NRI_ENUM
 (
@@ -52,7 +53,7 @@ NRI_ENUM
     OUT_OF_MEMORY,
     UNSUPPORTED,
     DEVICE_LOST,
-    SWAPCHAIN_RESIZE,
+    OUT_OF_DATE, // VK only: swap chain is out of date
 
     MAX_NUM
 );
@@ -196,17 +197,17 @@ NRI_ENUM
 (
     TextureLayout, uint8_t,
 
-    GENERAL,
+    UNKNOWN,
     COLOR_ATTACHMENT,
     DEPTH_STENCIL,
     DEPTH_STENCIL_READONLY,
     DEPTH_READONLY,
-    COPY_SOURCE,
-    COPY_DESTINATION,
     STENCIL_READONLY,
     SHADER_RESOURCE,
+    COPY_SOURCE,
+    COPY_DESTINATION,
     PRESENT,
-    UNKNOWN,
+    GENERAL,
 
     MAX_NUM
 );
@@ -763,6 +764,12 @@ NRI_STRUCT(AddressModes)
     NRI_NAME(AddressMode) u, v, w;
 };
 
+NRI_STRUCT(AccessAndLayout)
+{
+    NRI_NAME(AccessBits) acessBits;
+    NRI_NAME(TextureLayout) layout;
+};
+
 NRI_STRUCT(Filters)
 {
     NRI_NAME(Filter) min, mag, mip;
@@ -951,19 +958,6 @@ NRI_STRUCT(DescriptorPoolDesc)
     uint32_t nodeMask;
 };
 
-NRI_STRUCT(TextureTransitionBarrierDesc)
-{
-    const NRI_NAME(Texture)* texture;
-    NRI_NAME(Mip_t) mipOffset;
-    NRI_NAME(Mip_t) mipNum;
-    NRI_NAME(Dim_t) arrayOffset;
-    NRI_NAME(Dim_t) arraySize;
-    NRI_NAME(AccessBits) prevAccess;
-    NRI_NAME(AccessBits) nextAccess;
-    NRI_NAME(TextureLayout) prevLayout;
-    NRI_NAME(TextureLayout) nextLayout;
-};
-
 NRI_STRUCT(BufferTransitionBarrierDesc)
 {
     const NRI_NAME(Buffer)* buffer;
@@ -978,12 +972,22 @@ NRI_STRUCT(BufferAliasingBarrierDesc)
     NRI_NAME(AccessBits) nextAccess;
 };
 
+NRI_STRUCT(TextureTransitionBarrierDesc)
+{
+    const NRI_NAME(Texture)* texture;
+    NRI_NAME(Mip_t) mipOffset;
+    NRI_NAME(Mip_t) mipNum;
+    NRI_NAME(Dim_t) arrayOffset;
+    NRI_NAME(Dim_t) arraySize;
+    NRI_NAME(AccessAndLayout) prevState;
+    NRI_NAME(AccessAndLayout) nextState;
+};
+
 NRI_STRUCT(TextureAliasingBarrierDesc)
 {
     const NRI_NAME(Texture)* before;
     const NRI_NAME(Texture)* after;
-    NRI_NAME(AccessBits) nextAccess;
-    NRI_NAME(TextureLayout) nextLayout;
+    NRI_NAME(AccessAndLayout) nextState;
 };
 
 NRI_STRUCT(TransitionBarrierDesc)

@@ -44,8 +44,8 @@ Result CommandBufferD3D12::Create(D3D12_COMMAND_LIST_TYPE commandListType, ID3D1
 
 Result CommandBufferD3D12::Create(const CommandBufferD3D12Desc& commandBufferDesc)
 {
-    m_CommandAllocator = (ID3D12CommandAllocator*)commandBufferDesc.d3d12CommandAllocator;
-    m_GraphicsCommandList = (ID3D12GraphicsCommandList*)commandBufferDesc.d3d12CommandList;
+    m_CommandAllocator = commandBufferDesc.d3d12CommandAllocator;
+    m_GraphicsCommandList = commandBufferDesc.d3d12CommandList;
     m_GraphicsCommandList->QueryInterface(IID_PPV_ARGS(&m_GraphicsCommandList1));
     m_GraphicsCommandList->QueryInterface(IID_PPV_ARGS(&m_GraphicsCommandList4));
     m_GraphicsCommandList->QueryInterface(IID_PPV_ARGS(&m_GraphicsCommandList6));
@@ -502,7 +502,7 @@ inline void CommandBufferD3D12::PipelineBarrier(const TransitionBarrierDesc* tra
                 barrierDesc.mipOffset == 0 &&
                 barrierDesc.mipNum == REMAINING_MIP_LEVELS)
             {
-                AddResourceBarrier(texture, barrierDesc.prevAccess, barrierDesc.nextAccess, *ptr++, D3D12_RESOURCE_BARRIER_ALL_SUBRESOURCES);
+                AddResourceBarrier(texture, barrierDesc.prevState.acessBits, barrierDesc.nextState.acessBits, *ptr++, D3D12_RESOURCE_BARRIER_ALL_SUBRESOURCES);
             }
             else
             {
@@ -511,7 +511,7 @@ inline void CommandBufferD3D12::PipelineBarrier(const TransitionBarrierDesc* tra
                     for (Mip_t mipOffset = barrierDesc.mipOffset; mipOffset < barrierDesc.mipOffset + mipNum; mipOffset++)
                     {
                         uint32_t subresource = texture.GetSubresourceIndex(arrayOffset, mipOffset);
-                        AddResourceBarrier(texture, barrierDesc.prevAccess, barrierDesc.nextAccess, *ptr++, subresource);
+                        AddResourceBarrier(texture, barrierDesc.prevState.acessBits, barrierDesc.nextState.acessBits, *ptr++, subresource);
                     }
                 }
             }
