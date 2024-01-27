@@ -1,12 +1,4 @@
-/*
-Copyright (c) 2022, NVIDIA CORPORATION. All rights reserved.
-
-NVIDIA CORPORATION and its licensors retain all intellectual property
-and proprietary rights in and to this software, related documentation
-and any modifications thereto. Any use, reproduction, disclosure or
-distribution of this software and related documentation without an express
-license agreement from NVIDIA CORPORATION is strictly prohibited.
-*/
+// © 2021 NVIDIA Corporation
 
 Declare_PartiallyFillFunctionTable_Functions(VK)
 
@@ -389,12 +381,12 @@ static NRIVkInstance NRI_CALL GetVkInstance(const Device& device)
 
 static void* NRI_CALL GetVkGetInstanceProcAddr(const Device& device)
 {
-    return reinterpret_cast<void*>(((DeviceVK&)device).GetDispatchTable().GetInstanceProcAddr);
+    return (void*)(((DeviceVK&)device).GetDispatchTable().GetInstanceProcAddr);
 }
 
 static void* NRI_CALL GetVkGetDeviceProcAddr(const Device& device)
 {
-    return reinterpret_cast<void*>(((DeviceVK&)device).GetDispatchTable().GetDeviceProcAddr);
+    return (void*)(((DeviceVK&)device).GetDispatchTable().GetDeviceProcAddr);
 }
 
 Result DeviceVK::FillFunctionTable(WrapperVKInterface& wrapperVKInterface) const

@@ -1,12 +1,4 @@
-/*
-Copyright (c) 2022, NVIDIA CORPORATION. All rights reserved.
-
-NVIDIA CORPORATION and its licensors retain all intellectual property
-and proprietary rights in and to this software, related documentation
-and any modifications thereto. Any use, reproduction, disclosure or
-distribution of this software and related documentation without an express
-license agreement from NVIDIA CORPORATION is strictly prohibited.
-*/
+// © 2021 NVIDIA Corporation
 
 #include "SharedExternal.h"
 #include "DeviceBase.h"
@@ -658,7 +650,7 @@ Result DeviceVal::AllocateMemory(uint32_t nodeMask, MemoryType memoryType, uint6
     std::unordered_map<MemoryType, MemoryLocation>::iterator it;
     std::unordered_map<MemoryType, MemoryLocation>::iterator end;
     {
-        SharedScope lockScope(m_Lock);
+        ExclusiveScope lockScope(m_Lock);
         it = m_MemoryTypeMap.find(memoryType);
         end = m_MemoryTypeMap.end();
     }

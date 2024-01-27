@@ -1,12 +1,4 @@
-/*
-Copyright (c) 2022, NVIDIA CORPORATION. All rights reserved.
-
-NVIDIA CORPORATION and its licensors retain all intellectual property
-and proprietary rights in and to this software, related documentation
-and any modifications thereto. Any use, reproduction, disclosure or
-distribution of this software and related documentation without an express
-license agreement from NVIDIA CORPORATION is strictly prohibited.
-*/
+// © 2021 NVIDIA Corporation
 
 #include "SharedD3D11.h"
 #include "BufferD3D11.h"
@@ -36,7 +28,7 @@ Result BufferD3D11::Create(const MemoryD3D11& memory)
     if (m_Desc.usageMask & BufferUsageBits::ARGUMENT_BUFFER)
         desc.MiscFlags |= D3D11_RESOURCE_MISC_DRAWINDIRECT_ARGS;
 
-    if (memoryLocation == MemoryLocation::HOST_UPLOAD)
+    if (memoryLocation == MemoryLocation::HOST_UPLOAD || memoryLocation == MemoryLocation::DEVICE_UPLOAD)
     {
         if (m_Desc.usageMask == BufferUsageBits::NONE)
         {

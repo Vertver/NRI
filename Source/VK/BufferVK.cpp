@@ -1,12 +1,4 @@
-/*
-Copyright (c) 2022, NVIDIA CORPORATION. All rights reserved.
-
-NVIDIA CORPORATION and its licensors retain all intellectual property
-and proprietary rights in and to this software, related documentation
-and any modifications thereto. Any use, reproduction, disclosure or
-distribution of this software and related documentation without an express
-license agreement from NVIDIA CORPORATION is strictly prohibited.
-*/
+// © 2021 NVIDIA Corporation
 
 #include "SharedVK.h"
 #include "BufferVK.h"
@@ -190,12 +182,12 @@ inline void* BufferVK::Map(uint64_t offset, uint64_t size)
     if (size == WHOLE_SIZE)
         size = m_Desc.size;
 
-    return m_Memory->GetMappedMemory(0) + m_MappedMemoryOffset + offset;
+    return m_Memory->GetMappedMemory(0) + m_MappedMemoryOffset + offset; // TODO: mGPU + DEVICE_UPLOAD requires massaging
 }
 
 inline void BufferVK::Unmap()
 {
-    // TODO: flush the range if the memory is not host coherent
+    // TODO: flush memory range if not HOST_COHERENT
     // if (m_Memory->IsHostCoherent())
     //     m_Memory->FlushMemoryRange(m_MappedMemoryOffset + m_MappedRangeOffset, m_MappedRangeSize);
 }

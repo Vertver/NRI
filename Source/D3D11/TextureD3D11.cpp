@@ -1,12 +1,4 @@
-/*
-Copyright (c) 2022, NVIDIA CORPORATION. All rights reserved.
-
-NVIDIA CORPORATION and its licensors retain all intellectual property
-and proprietary rights in and to this software, related documentation
-and any modifications thereto. Any use, reproduction, disclosure or
-distribution of this software and related documentation without an express
-license agreement from NVIDIA CORPORATION is strictly prohibited.
-*/
+// © 2021 NVIDIA Corporation
 
 #include "SharedD3D11.h"
 #include "TextureD3D11.h"
@@ -32,7 +24,7 @@ Result TextureD3D11::Create(const MemoryD3D11* memory)
     D3D11_USAGE usage = D3D11_USAGE_STAGING;
     if (memory)
     {
-        usage = memory->GetType() == MemoryLocation::HOST_UPLOAD ? D3D11_USAGE_DYNAMIC : D3D11_USAGE_DEFAULT;
+        usage = (memory->GetType() == MemoryLocation::HOST_UPLOAD || memory->GetType() == MemoryLocation::DEVICE_UPLOAD) ? D3D11_USAGE_DYNAMIC : D3D11_USAGE_DEFAULT;
         cpuAccessFlags = 0;
     }
 

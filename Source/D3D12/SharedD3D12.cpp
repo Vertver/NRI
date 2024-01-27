@@ -1,12 +1,4 @@
-/*
-Copyright (c) 2022, NVIDIA CORPORATION. All rights reserved.
-
-NVIDIA CORPORATION and its licensors retain all intellectual property
-and proprietary rights in and to this software, related documentation
-and any modifications thereto. Any use, reproduction, disclosure or
-distribution of this software and related documentation without an express
-license agreement from NVIDIA CORPORATION is strictly prohibited.
-*/
+// © 2021 NVIDIA Corporation
 
 #include "SharedD3D12.h"
 #include "BufferD3D12.h"
@@ -27,8 +19,13 @@ D3D12_COMMAND_LIST_TYPE nri::GetCommandListType(CommandQueueType commandQueueTyp
 constexpr std::array<D3D12_HEAP_TYPE, (uint32_t)MemoryLocation::MAX_NUM> HEAP_TYPES =
 {
     D3D12_HEAP_TYPE_DEFAULT,                    // DEVICE
+#ifdef NRI_USE_AGILITY_SDK
+    D3D12_HEAP_TYPE_GPU_UPLOAD,                 // DEVICE_UPLOAD
+#else
+    D3D12_HEAP_TYPE_UPLOAD,                     // DEVICE_UPLOAD
+#endif
     D3D12_HEAP_TYPE_UPLOAD,                     // HOST_UPLOAD
-    D3D12_HEAP_TYPE_READBACK                    // HOST_READBACK
+    D3D12_HEAP_TYPE_READBACK,                   // HOST_READBACK
 };
 
 MemoryType nri::GetMemoryType(D3D12_HEAP_TYPE heapType, D3D12_HEAP_FLAGS heapFlags)

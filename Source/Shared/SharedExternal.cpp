@@ -1,12 +1,4 @@
-/*
-Copyright (c) 2022, NVIDIA CORPORATION. All rights reserved.
-
-NVIDIA CORPORATION and its licensors retain all intellectual property
-and proprietary rights in and to this software, related documentation
-and any modifications thereto. Any use, reproduction, disclosure or
-distribution of this software and related documentation without an express
-license agreement from NVIDIA CORPORATION is strictly prohibited.
-*/
+// © 2021 NVIDIA Corporation
 
 #include "SharedExternal.h"
 #include "DeviceBase.h"
@@ -356,7 +348,7 @@ nri::Result DisplayDescHelper::GetDisplayDesc(void* hwnd, nri::DisplayDesc& disp
         i++;
     }
 
-    // Having determined the output (display) upon which the app is primarily being 
+    // Having determined the output (display) upon which the app is primarily being
     // rendered, retrieve the HDR capabilities of that display by checking the color space.
 
     ComPtr<IDXGIOutput6> output6;
@@ -929,7 +921,7 @@ constexpr std::array<const char*, uint32_t(nri::GraphicsAPI::VULKAN) + 1> GRAPHI
 {
     "D3D11",
     "D3D12",
-    "VULKAN"
+    "VK"
 };
 
 void nri::DeviceBase::ReportMessage(nri::Message messageType, const char* file, uint32_t line, const char* format, ...) const

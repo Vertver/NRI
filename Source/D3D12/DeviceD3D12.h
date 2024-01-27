@@ -1,12 +1,4 @@
-﻿/*
-Copyright (c) 2022, NVIDIA CORPORATION. All rights reserved.
-
-NVIDIA CORPORATION and its licensors retain all intellectual property
-and proprietary rights in and to this software, related documentation
-and any modifications thereto. Any use, reproduction, disclosure or
-distribution of this software and related documentation without an express
-license agreement from NVIDIA CORPORATION is strictly prohibited.
-*/
+﻿// © 2021 NVIDIA Corporation
 
 #pragma once
 
@@ -176,11 +168,11 @@ private:
     ComPtr<ID3D12CommandSignature> m_DispatchCommandSignature;
     CoreInterface m_CoreInterface = {};
     std::array<Lock, DESCRIPTOR_HEAP_TYPE_NUM> m_FreeDescriptorLocks;
-    Lock m_DescriptorHeapLock;
-    Lock m_QueueLock;
     bool m_IsRaytracingSupported = false;
     bool m_IsMeshShaderSupported = false;
     bool m_SkipLiveObjectsReporting = false;
+    Lock m_DescriptorHeapLock;
+    Lock m_QueueLock;
 };
 
 }

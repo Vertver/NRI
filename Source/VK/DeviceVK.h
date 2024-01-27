@@ -1,12 +1,4 @@
-/*
-Copyright (c) 2022, NVIDIA CORPORATION. All rights reserved.
-
-NVIDIA CORPORATION and its licensors retain all intellectual property
-and proprietary rights in and to this software, related documentation
-and any modifications thereto. Any use, reproduction, disclosure or
-distribution of this software and related documentation without an express
-license agreement from NVIDIA CORPORATION is strictly prohibited.
-*/
+// © 2021 NVIDIA Corporation
 
 #pragma once
 
@@ -61,7 +53,7 @@ struct DeviceVK final : public DeviceBase
     Result Create(const DeviceCreationVKDesc& deviceCreationVKDesc);
     Result Create(const DeviceCreationDesc& deviceCreationDesc);
     bool GetMemoryType(MemoryLocation memoryLocation, uint32_t memoryTypeMask, MemoryTypeInfo& memoryTypeInfo) const;
-    bool GetMemoryType(uint32_t index, MemoryTypeInfo& memoryTypeInfo) const;
+    bool GetMemoryTypeByIndex(uint32_t index, MemoryTypeInfo& memoryTypeInfo) const;
     void SetDebugNameToTrivialObject(VkObjectType objectType, uint64_t handle, const char* name);
     void SetDebugNameToDeviceGroupObject(VkObjectType objectType, const uint64_t* handles, const char* name);
 
@@ -150,8 +142,21 @@ private:
     template< typename Implementation, typename Interface, typename ... Args >
     Result CreateImplementation(Interface*& entity, const Args&... args);
 
+public:
+    struct SupportedFeatures
+    {
+        bool debugUtils = false;
+        bool subsetAllocation = false;
+        bool descriptorIndexing = false;
+        bool bufferDeviceAddress = false;
+        bool sampleLocations = false;
+        bool conservativeRaster = false;
+        bool rayTracing = false;
+        bool microMap = false;
+        bool meshShader = false;
+    } supportedFeatures;
+
 private:
-    Lock m_Lock;
     Vector<VkPhysicalDevice> m_PhysicalDevices;
     Vector<uint32_t> m_PhysicalDeviceIndices;
     Vector<uint32_t> m_ConcurrentSharingModeQueueIndices;
@@ -172,20 +177,7 @@ private:
     ComPtr<IDXGIAdapter> m_Adapter;
 #endif
     bool m_OwnsNativeObjects = false;
-
-public:
-    struct SupportedFeatures
-    {
-        bool debugUtils = false;
-        bool subsetAllocation = false;
-        bool descriptorIndexing = false;
-        bool bufferDeviceAddress = false;
-        bool sampleLocations = false;
-        bool conservativeRaster = false;
-        bool rayTracing = false;
-        bool microMap = false;
-        bool meshShader = false;
-    } supportedFeatures;
+    Lock m_Lock;
 };
 
 }

@@ -1,12 +1,4 @@
-/*
-Copyright (c) 2022, NVIDIA CORPORATION. All rights reserved.
-
-NVIDIA CORPORATION and its licensors retain all intellectual property
-and proprietary rights in and to this software, related documentation
-and any modifications thereto. Any use, reproduction, disclosure or
-distribution of this software and related documentation without an express
-license agreement from NVIDIA CORPORATION is strictly prohibited.
-*/
+// © 2021 NVIDIA Corporation
 
 #pragma once
 
@@ -171,13 +163,13 @@ struct DeviceVal final : public DeviceBase {
     HelperInterface m_HelperAPI = {};
     std::array<CommandQueueVal*, COMMAND_QUEUE_TYPE_NUM> m_CommandQueues = {};
     UnorderedMap<MemoryType, MemoryLocation> m_MemoryTypeMap;
-    Lock m_Lock;
     bool m_IsSwapChainSupported = false;
     bool m_IsWrapperD3D11Supported = false;
     bool m_IsWrapperD3D12Supported = false;
     bool m_IsWrapperVKSupported = false;
     bool m_IsRayTracingSupported = false;
     bool m_IsMeshShaderExtSupported = false;
+    Lock m_Lock;
 };
 
 } // namespace nri

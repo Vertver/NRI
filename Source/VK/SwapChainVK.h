@@ -1,12 +1,4 @@
-/*
-Copyright (c) 2022, NVIDIA CORPORATION. All rights reserved.
-
-NVIDIA CORPORATION and its licensors retain all intellectual property
-and proprietary rights in and to this software, related documentation
-and any modifications thereto. Any use, reproduction, disclosure or
-distribution of this software and related documentation without an express
-license agreement from NVIDIA CORPORATION is strictly prohibited.
-*/
+// © 2021 NVIDIA Corporation
 
 #pragma once
 
@@ -16,6 +8,9 @@ namespace nri
 struct DeviceVK;
 struct CommandQueueVK;
 struct TextureVK;
+
+// Let's keep things simple and hide it under the hood
+constexpr uint32_t MAX_NUMBER_OF_FRAMES_IN_FLIGHT = 8;
 
 struct SwapChainVK : public DisplayDescHelper
 {
@@ -45,13 +40,14 @@ private:
 
 private:
     Vector<TextureVK*> m_Textures;
+    std::array<VkSemaphore, MAX_NUMBER_OF_FRAMES_IN_FLIGHT> m_Semaphores;
     SwapChainDesc m_SwapChainDesc = {};
     VkSwapchainKHR m_Handle = VK_NULL_HANDLE;
     VkSurfaceKHR m_Surface = VK_NULL_HANDLE;
-    VkSemaphore m_Semaphore = VK_NULL_HANDLE;
     DeviceVK& m_Device;
-    const CommandQueueVK* m_CommandQueue = nullptr;
+    CommandQueueVK* m_CommandQueue = nullptr;
     uint32_t m_TextureIndex = 0;
+    uint32_t m_FrameIndex = 0;
 };
 
 }

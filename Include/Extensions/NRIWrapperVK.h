@@ -1,12 +1,4 @@
-/*
-Copyright (c) 2022, NVIDIA CORPORATION. All rights reserved.
-
-NVIDIA CORPORATION and its licensors retain all intellectual property
-and proprietary rights in and to this software, related documentation
-and any modifications thereto. Any use, reproduction, disclosure or
-distribution of this software and related documentation without an express
-license agreement from NVIDIA CORPORATION is strictly prohibited.
-*/
+// © 2021 NVIDIA Corporation
 
 #pragma once
 
@@ -15,6 +7,8 @@ license agreement from NVIDIA CORPORATION is strictly prohibited.
 NRI_FORWARD_STRUCT(VkImageSubresourceRange);
 
 NRI_NAMESPACE_BEGIN
+
+NRI_FORWARD_STRUCT(AccelerationStructure);
 
 typedef uint64_t NRIVkCommandPool;
 typedef uint64_t NRIVkImage;

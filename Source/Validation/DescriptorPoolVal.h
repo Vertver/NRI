@@ -1,12 +1,4 @@
-/*
-Copyright (c) 2022, NVIDIA CORPORATION. All rights reserved.
-
-NVIDIA CORPORATION and its licensors retain all intellectual property
-and proprietary rights in and to this software, related documentation
-and any modifications thereto. Any use, reproduction, disclosure or
-distribution of this software and related documentation without an express
-license agreement from NVIDIA CORPORATION is strictly prohibited.
-*/
+// © 2021 NVIDIA Corporation
 
 #pragma once
 
@@ -19,12 +11,16 @@ struct DescriptorPoolVal : public DeviceObjectVal<DescriptorPool> {
           m_SkipValidation(true) // TODO: we have to request "DescriptorPoolDesc" in "DescriptorPoolVKDesc"
     {
         m_Desc.descriptorSetMaxNum = descriptorSetMaxNum;
-        m_DescriptorSets.resize(m_Desc.descriptorSetMaxNum, DescriptorSetVal(device));
+        m_DescriptorSets.reserve(m_Desc.descriptorSetMaxNum);
+        for(uint32_t i = 0; i < m_Desc.descriptorSetMaxNum; i++)
+            m_DescriptorSets.emplace_back(DescriptorSetVal(device));
     }
 
     DescriptorPoolVal(DeviceVal& device, DescriptorPool* descriptorPool, const DescriptorPoolDesc& descriptorPoolDesc)
         : DeviceObjectVal(device, descriptorPool), m_DescriptorSets(device.GetStdAllocator()), m_Desc(descriptorPoolDesc) {
-        m_DescriptorSets.resize(m_Desc.descriptorSetMaxNum, DescriptorSetVal(device));
+        m_DescriptorSets.reserve(m_Desc.descriptorSetMaxNum);
+        for(uint32_t i = 0; i < m_Desc.descriptorSetMaxNum; i++)
+            m_DescriptorSets.emplace_back(DescriptorSetVal(device));
     }
 
     //================================================================================================================

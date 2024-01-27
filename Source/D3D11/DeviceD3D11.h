@@ -1,12 +1,4 @@
-/*
-Copyright (c) 2022, NVIDIA CORPORATION. All rights reserved.
-
-NVIDIA CORPORATION and its licensors retain all intellectual property
-and proprietary rights in and to this software, related documentation
-and any modifications thereto. Any use, reproduction, disclosure or
-distribution of this software and related documentation without an express
-license agreement from NVIDIA CORPORATION is strictly prohibited.
-*/
+// © 2021 NVIDIA Corporation
 
 #pragma once
 
@@ -106,10 +98,9 @@ private:
     VersionedContext m_ImmediateContext = {};
     Vector<CommandQueueD3D11> m_CommandQueues;
     DeviceDesc m_Desc = {};
-    CRITICAL_SECTION m_CriticalSection = {};
+    CRITICAL_SECTION m_CriticalSection = {}; // TODO: Lock?
     CoreInterface m_CoreInterface = {};
     ComPtr<IDXGIAdapter> m_Adapter;
-    bool m_SkipLiveObjectsReporting = false;
 
 private:
     void FillDesc(bool isValidationEnabled);

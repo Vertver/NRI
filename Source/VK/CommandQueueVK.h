@@ -1,12 +1,4 @@
-/*
-Copyright (c) 2022, NVIDIA CORPORATION. All rights reserved.
-
-NVIDIA CORPORATION and its licensors retain all intellectual property
-and proprietary rights in and to this software, related documentation
-and any modifications thereto. Any use, reproduction, disclosure or
-distribution of this software and related documentation without an express
-license agreement from NVIDIA CORPORATION is strictly prohibited.
-*/
+// © 2021 NVIDIA Corporation
 
 #pragma once
 
@@ -40,6 +32,9 @@ struct CommandQueueVK
     inline CommandQueueType GetType() const
     { return m_Type; }
 
+    inline Lock& GetLock()
+    { return m_Lock; }
+
     Result Create(const CommandQueueVKDesc& commandQueueDesc);
 
     //================================================================================================================
@@ -58,6 +53,7 @@ private:
     VkQueue m_Handle = VK_NULL_HANDLE;
     uint32_t m_FamilyIndex = (uint32_t)-1;
     CommandQueueType m_Type = (CommandQueueType)-1;
+    Lock m_Lock;
 };
 
 }
