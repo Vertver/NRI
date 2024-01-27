@@ -1149,11 +1149,9 @@ Result DeviceVK::CreateLogicalDevice(const DeviceCreationDesc& deviceCreationDes
         desiredExts.push_back(VK_EXT_MESH_SHADER_EXTENSION_NAME);
         supportedFeatures.meshShader = true;
     }
-
-    #ifdef __APPLE__
-        desiredExts.push_back(VK_KHR_PORTABILITY_SUBSET_EXTENSION_NAME);
-        desiredExts.push_back(VK_KHR_DYNAMIC_RENDERING_EXTENSION_NAME);
-    #endif
+  
+    desiredExts.push_back(VK_KHR_PORTABILITY_SUBSET_EXTENSION_NAME);
+    desiredExts.push_back(VK_KHR_DYNAMIC_RENDERING_EXTENSION_NAME);
 
     VkPhysicalDeviceRayTracingPipelineFeaturesKHR rayTracingFeatures = { VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_RAY_TRACING_PIPELINE_FEATURES_KHR };
     VkPhysicalDeviceAccelerationStructureFeaturesKHR accelerationStructureFeatures = { VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_ACCELERATION_STRUCTURE_FEATURES_KHR };

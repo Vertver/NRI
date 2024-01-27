@@ -303,7 +303,7 @@ if (NRI_ENABLE_STREAMLINE_SUPPORT)
     )
 endif ()
 
-target_include_directories (${PROJECT_NAME} PRIVATE "Include" "Source/Shared" "External/vulkan/include")
+target_include_directories (${PROJECT_NAME} PUBLIC "Include" "Source/Shared" "External/vulkan/include")
 target_compile_definitions (${PROJECT_NAME} PRIVATE ${COMPILE_DEFINITIONS})
 target_compile_options (${PROJECT_NAME} PRIVATE ${COMPILE_OPTIONS})
 
