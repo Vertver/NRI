@@ -65,7 +65,11 @@ Result CreateDeviceD3D11(const DeviceCreationD3D11Desc& deviceCreationD3D11Desc,
 DeviceD3D11::DeviceD3D11(const CallbackInterface& callbacks, StdAllocator<uint8_t>& stdAllocator) :
     DeviceBase(callbacks, stdAllocator)
     , m_CommandQueues(GetStdAllocator())
-{}
+{
+    m_Desc.graphicsAPI = GraphicsAPI::D3D11;
+    m_Desc.nriVersionMajor = NRI_VERSION_MAJOR;
+    m_Desc.nriVersionMinor = NRI_VERSION_MINOR;
+}
 
 DeviceD3D11::~DeviceD3D11()
 {
@@ -265,18 +269,33 @@ void DeviceD3D11::FillDesc(bool isValidationEnabled)
 {
     D3D11_FEATURE_DATA_D3D11_OPTIONS options = {};
     HRESULT hr = m_Device->CheckFeatureSupport(D3D11_FEATURE_D3D11_OPTIONS, &options, sizeof(options));
+    if (FAILED(hr))
+        REPORT_WARNING(this, "ID3D11Device::CheckFeatureSupport(options) failed, result = 0x%08X!", hr);
 
     D3D11_FEATURE_DATA_D3D11_OPTIONS1 options1 = {};
     hr = m_Device->CheckFeatureSupport(D3D11_FEATURE_D3D11_OPTIONS1, &options1, sizeof(options1));
+    if (FAILED(hr))
+        REPORT_WARNING(this, "ID3D11Device::CheckFeatureSupport(options1) failed, result = 0x%08X!", hr);
 
     D3D11_FEATURE_DATA_D3D11_OPTIONS2 options2 = {};
     hr = m_Device->CheckFeatureSupport(D3D11_FEATURE_D3D11_OPTIONS2, &options2, sizeof(options2));
+    if (FAILED(hr))
+        REPORT_WARNING(this, "ID3D11Device::CheckFeatureSupport(options2) failed, result = 0x%08X!", hr);
 
     D3D11_FEATURE_DATA_D3D11_OPTIONS3 options3 = {};
     hr = m_Device->CheckFeatureSupport(D3D11_FEATURE_D3D11_OPTIONS3, &options3, sizeof(options3));
+    if (FAILED(hr))
+        REPORT_WARNING(this, "ID3D11Device::CheckFeatureSupport(options3) failed, result = 0x%08X!", hr);
 
     D3D11_FEATURE_DATA_D3D11_OPTIONS4 options4 = {};
     hr = m_Device->CheckFeatureSupport(D3D11_FEATURE_D3D11_OPTIONS4, &options4, sizeof(options4));
+    if (FAILED(hr))
+        REPORT_WARNING(this, "ID3D11Device::CheckFeatureSupport(options4) failed, result = 0x%08X!", hr);
+
+    D3D11_FEATURE_DATA_D3D11_OPTIONS5 options5 = {};
+    hr = m_Device->CheckFeatureSupport(D3D11_FEATURE_D3D11_OPTIONS5, &options5, sizeof(options5));
+    if (FAILED(hr))
+        REPORT_WARNING(this, "ID3D11Device::CheckFeatureSupport(options4) failed, result = 0x%08X!", hr);
 
     uint64_t timestampFrequency = 0;
     {
@@ -297,10 +316,6 @@ void DeviceD3D11::FillDesc(bool isValidationEnabled)
             timestampFrequency = data.Frequency;
         }
     }
-
-    m_Desc.graphicsAPI = GraphicsAPI::D3D11;
-    m_Desc.nriVersionMajor = NRI_VERSION_MAJOR;
-    m_Desc.nriVersionMinor = NRI_VERSION_MINOR;
 
     m_Desc.viewportMaxNum = D3D11_VIEWPORT_AND_SCISSORRECT_OBJECT_COUNT_PER_PIPELINE;
     m_Desc.viewportSubPixelBits = D3D11_SUBPIXEL_FRACTIONAL_BIT_COUNT;

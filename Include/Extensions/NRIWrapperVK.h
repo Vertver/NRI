@@ -4,8 +4,6 @@
 
 #include "NRIDeviceCreation.h"
 
-NRI_FORWARD_STRUCT(VkImageSubresourceRange);
-
 NRI_NAMESPACE_BEGIN
 
 NRI_FORWARD_STRUCT(AccelerationStructure);
@@ -84,12 +82,12 @@ NRI_STRUCT(TextureVKDesc)
     uint32_t vkFormat;
     uint32_t vkImageAspectFlags;
     uint32_t vkImageType;
-    Dim_t width;
-    Dim_t height;
-    Dim_t depth;
-    Mip_t mipNum;
-    Dim_t arraySize;
-    Sample_t sampleNum;
+    NRI_NAME(Dim_t) width;
+    NRI_NAME(Dim_t) height;
+    NRI_NAME(Dim_t) depth;
+    NRI_NAME(Mip_t) mipNum;
+    NRI_NAME(Dim_t) arraySize;
+    NRI_NAME(Sample_t) sampleNum;
     uint32_t nodeMask;
 };
 
