@@ -22,11 +22,10 @@ NRI_STRUCT(TextureSubresourceUploadDesc)
 
 NRI_STRUCT(TextureUploadDesc)
 {
-    const NRI_NAME(TextureSubresourceUploadDesc)* subresources;
+    const NRI_NAME(TextureSubresourceUploadDesc)* subresources; // must include ALL subresources = arraySize * mipNum
     NRI_NAME(Texture)* texture;
-    NRI_NAME(AccessAndLayout) nextState;
-    NRI_NAME(Mip_t) mipNum;
-    NRI_NAME(Dim_t) arraySize;
+    NRI_NAME(AccessLayoutStage) before;
+    NRI_NAME(AccessLayoutStage) after;
 };
 
 NRI_STRUCT(BufferUploadDesc)
@@ -35,8 +34,8 @@ NRI_STRUCT(BufferUploadDesc)
     uint64_t dataSize;
     NRI_NAME(Buffer)* buffer;
     uint64_t bufferOffset;
-    NRI_NAME(AccessBits) prevAccess;
-    NRI_NAME(AccessBits) nextAccess;
+    NRI_NAME(AccessStage) before;
+    NRI_NAME(AccessStage) after;
 };
 
 NRI_STRUCT(ResourceGroupDesc)
@@ -52,7 +51,6 @@ NRI_STRUCT(HelperInterface)
 {
     uint32_t (NRI_CALL *CalculateAllocationNumber)(NRI_NAME_REF(Device) device, const NRI_NAME_REF(ResourceGroupDesc) resourceGroupDesc);
     NRI_NAME(Result) (NRI_CALL *AllocateAndBindMemory)(NRI_NAME_REF(Device) device, const NRI_NAME_REF(ResourceGroupDesc) resourceGroupDesc, NRI_NAME(Memory)** allocations);
-    NRI_NAME(Result) (NRI_CALL *ChangeResourceStates)(NRI_NAME_REF(CommandQueue) commandQueue, const NRI_NAME_REF(TransitionBarrierDesc) transitionBarriers);
     NRI_NAME(Result) (NRI_CALL *UploadData)(NRI_NAME_REF(CommandQueue) commandQueue, const NRI_NAME(TextureUploadDesc)* textureUploadDescs, uint32_t textureUploadDescNum,
         const NRI_NAME(BufferUploadDesc)* bufferUploadDescs, uint32_t bufferUploadDescNum); // TODO: add 'nodeMask' to explicitly define which GPUs data should be uploaded on
     NRI_NAME(Result) (NRI_CALL *WaitForIdle)(NRI_NAME_REF(CommandQueue) commandQueue);
@@ -152,46 +150,47 @@ static inline NRI_NAME(TextureDesc) NRI_FUNC_NAME(Texture3D)(NRI_NAME(Format) fo
     return textureDesc;
 }
 
-static inline NRI_NAME(TextureTransitionBarrierDesc) NRI_FUNC_NAME(TextureTransition)(NRI_NAME(Texture)* texture, NRI_NAME(AccessAndLayout) prevState, NRI_NAME(AccessAndLayout) nextState,
+static inline NRI_NAME(TextureBarrierDesc) NRI_FUNC_NAME(TextureBarrier)(NRI_NAME(Texture)* texture, NRI_NAME(AccessLayoutStage) before, NRI_NAME(AccessLayoutStage) after,
     NRI_NAME(Mip_t) mipOffset NRI_DEFAULT_VALUE(0), NRI_NAME(Mip_t) mipNum NRI_DEFAULT_VALUE(NRI_NAME(REMAINING_MIP_LEVELS)), NRI_NAME(Dim_t) arrayOffset NRI_DEFAULT_VALUE(0),
     NRI_NAME(Dim_t) arraySize NRI_DEFAULT_VALUE(NRI_NAME(REMAINING_ARRAY_LAYERS)))
 {
-    NRI_NAME(TextureTransitionBarrierDesc) textureTransitionBarrierDesc = NRI_ZERO_INIT;
-    textureTransitionBarrierDesc.texture = texture;
-    textureTransitionBarrierDesc.prevState = prevState;
-    textureTransitionBarrierDesc.nextState = nextState;
-    textureTransitionBarrierDesc.mipOffset = mipOffset;
-    textureTransitionBarrierDesc.mipNum = mipNum;
-    textureTransitionBarrierDesc.arrayOffset = arrayOffset;
-    textureTransitionBarrierDesc.arraySize = arraySize;
+    NRI_NAME(TextureBarrierDesc) textureBarrierDesc = NRI_ZERO_INIT;
+    textureBarrierDesc.texture = texture;
+    textureBarrierDesc.before = before;
+    textureBarrierDesc.after = after;
+    textureBarrierDesc.mipOffset = mipOffset;
+    textureBarrierDesc.mipNum = mipNum;
+    textureBarrierDesc.arrayOffset = arrayOffset;
+    textureBarrierDesc.arraySize = arraySize;
 
-    return textureTransitionBarrierDesc;
+    return textureBarrierDesc;
 }
 
-static inline NRI_NAME(TextureTransitionBarrierDesc) NRI_FUNC_NAME(TextureTransitionFromUnknown)(NRI_NAME(Texture)* texture, NRI_NAME(AccessAndLayout) nextState,
+static inline NRI_NAME(TextureBarrierDesc) NRI_FUNC_NAME(TextureBarrierFromUnknown)(NRI_NAME(Texture)* texture, NRI_NAME(AccessLayoutStage) after,
     NRI_NAME(Mip_t) mipOffset NRI_DEFAULT_VALUE(0), NRI_NAME(Mip_t) mipNum NRI_DEFAULT_VALUE(NRI_NAME(REMAINING_MIP_LEVELS)), NRI_NAME(Dim_t) arrayOffset NRI_DEFAULT_VALUE(0),
     NRI_NAME(Dim_t) arraySize NRI_DEFAULT_VALUE(NRI_NAME(REMAINING_ARRAY_LAYERS)))
 {
-    NRI_NAME(TextureTransitionBarrierDesc) textureTransitionBarrierDesc = NRI_ZERO_INIT;
-    textureTransitionBarrierDesc.texture = texture;
-    textureTransitionBarrierDesc.prevState.acessBits = NRI_ENUM_MEMBER(AccessBits, UNKNOWN);
-    textureTransitionBarrierDesc.prevState.layout = NRI_ENUM_MEMBER(TextureLayout, UNKNOWN);
-    textureTransitionBarrierDesc.nextState = nextState;
-    textureTransitionBarrierDesc.mipOffset = mipOffset;
-    textureTransitionBarrierDesc.mipNum = mipNum;
-    textureTransitionBarrierDesc.arrayOffset = arrayOffset;
-    textureTransitionBarrierDesc.arraySize = arraySize;
+    NRI_NAME(TextureBarrierDesc) textureBarrierDesc = NRI_ZERO_INIT;
+    textureBarrierDesc.texture = texture;
+    textureBarrierDesc.before.access = NRI_ENUM_MEMBER(AccessBits, UNKNOWN);
+    textureBarrierDesc.before.layout = NRI_ENUM_MEMBER(Layout, UNKNOWN);
+    textureBarrierDesc.before.stages = NRI_ENUM_MEMBER(StageBits, ALL);
+    textureBarrierDesc.after = after;
+    textureBarrierDesc.mipOffset = mipOffset;
+    textureBarrierDesc.mipNum = mipNum;
+    textureBarrierDesc.arrayOffset = arrayOffset;
+    textureBarrierDesc.arraySize = arraySize;
 
-    return textureTransitionBarrierDesc;
+    return textureBarrierDesc;
 }
 
-static inline NRI_NAME(TextureTransitionBarrierDesc) NRI_FUNC_NAME(TextureTransitionFromState)(NRI_NAME_REF(TextureTransitionBarrierDesc) prevState, NRI_NAME(AccessAndLayout) nextState,
+static inline NRI_NAME(TextureBarrierDesc) NRI_FUNC_NAME(TextureBarrierFromState)(NRI_NAME_REF(TextureBarrierDesc) prevState, NRI_NAME(AccessLayoutStage) after,
     NRI_NAME(Mip_t) mipOffset NRI_DEFAULT_VALUE(0), NRI_NAME(Mip_t) mipNum NRI_DEFAULT_VALUE(NRI_NAME(REMAINING_MIP_LEVELS)))
 {
     NRI_REF_ACCESS(prevState)->mipOffset = mipOffset;
     NRI_REF_ACCESS(prevState)->mipNum = mipNum;
-    NRI_REF_ACCESS(prevState)->prevState = NRI_REF_ACCESS(prevState)->nextState;
-    NRI_REF_ACCESS(prevState)->nextState = nextState;
+    NRI_REF_ACCESS(prevState)->before = NRI_REF_ACCESS(prevState)->after;
+    NRI_REF_ACCESS(prevState)->after = after;
 
     return *NRI_REF_ACCESS(prevState);
 }

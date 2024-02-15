@@ -220,6 +220,69 @@ void DeviceVK::GetAdapterDesc()
 #endif
 }
 
+Result DeviceVK::Create(const DeviceCreationVKDesc& deviceCreationVKDesc)
+{
+    m_OwnsNativeObjects = false;
+    m_SPIRVBindingOffsets = deviceCreationVKDesc.spirvBindingOffsets;
+
+    const char* loaderPath = deviceCreationVKDesc.vulkanLoaderPath ? deviceCreationVKDesc.vulkanLoaderPath : VULKAN_LOADER_NAME;
+    m_Loader = LoadSharedLibrary(loaderPath);
+    if (!m_Loader)
+    {
+        REPORT_ERROR(this, "Failed to load Vulkan loader: '%s'.", loaderPath);
+        return Result::UNSUPPORTED;
+    }
+
+    // Create instance
+    Result res = ResolvePreInstanceDispatchTable();
+    if (res != Result::SUCCESS)
+        return res;
+
+    m_Instance = (VkInstance)deviceCreationVKDesc.vkInstance;
+
+    res = ResolveInstanceDispatchTable();
+    if (res != Result::SUCCESS)
+        return res;
+
+    // Find physical device
+    const VkPhysicalDevice* physicalDevices = (VkPhysicalDevice*)deviceCreationVKDesc.vkPhysicalDevices; // TODO: physical device indices?
+    m_PhysicalDevices.insert(m_PhysicalDevices.begin(), physicalDevices, physicalDevices + deviceCreationVKDesc.deviceGroupSize);
+
+    m_VK.GetPhysicalDeviceMemoryProperties(m_PhysicalDevices.front(), &m_MemoryProps);
+
+    FillFamilyIndices(true, deviceCreationVKDesc.queueFamilyIndices, deviceCreationVKDesc.queueFamilyIndexNum);
+
+    // Get adapter description as early as possible for meaningful error reporting
+    GetAdapterDesc();
+
+    // Create device
+    m_Device = (VkDevice)deviceCreationVKDesc.vkDevice;
+
+    res = ResolveDispatchTable();
+    if (res != Result::SUCCESS)
+        return res;
+
+    { // Instance extensions
+        uint32_t extensionNum = 0;
+        m_VK.EnumerateInstanceExtensionProperties(nullptr, &extensionNum, nullptr);
+
+        Vector<VkExtensionProperties> supportedExts(extensionNum, GetStdAllocator());
+        m_VK.EnumerateInstanceExtensionProperties(nullptr, &extensionNum, supportedExts.data());
+
+        if (IsExtensionSupported(VK_EXT_DEBUG_UTILS_EXTENSION_NAME, supportedExts))
+            supportedFeatures.debugUtils = true;
+    }
+
+    Vector<const char*> desiredExts(GetStdAllocator());
+    ProcessDeviceExtensions(desiredExts, false);
+
+    // Finalize
+    CreateCommandQueues();
+    FillDesc(false);
+
+    return FillFunctionTable(m_CoreInterface);
+}
+
 Result DeviceVK::Create(const DeviceCreationDesc& deviceCreationDesc)
 {
     m_OwnsNativeObjects = true;
@@ -292,87 +355,207 @@ Result DeviceVK::Create(const DeviceCreationDesc& deviceCreationDesc)
     return FillFunctionTable(m_CoreInterface);
 }
 
-Result DeviceVK::Create(const DeviceCreationVKDesc& deviceCreationVKDesc)
+void DeviceVK::ProcessDeviceExtensions(Vector<const char*>& desiredExts, bool disableRayTracing)
 {
-    m_OwnsNativeObjects = false;
-    m_SPIRVBindingOffsets = deviceCreationVKDesc.spirvBindingOffsets;
+    // Query extensions
+    uint32_t extensionNum = 0;
+    m_VK.EnumerateDeviceExtensionProperties(m_PhysicalDevices.front(), nullptr, &extensionNum, nullptr);
 
-    const char* loaderPath = deviceCreationVKDesc.vulkanLoaderPath ? deviceCreationVKDesc.vulkanLoaderPath : VULKAN_LOADER_NAME;
-    m_Loader = LoadSharedLibrary(loaderPath);
-    if (!m_Loader)
+    Vector<VkExtensionProperties> supportedExts(extensionNum, GetStdAllocator());
+    m_VK.EnumerateDeviceExtensionProperties(m_PhysicalDevices.front(), nullptr, &extensionNum, supportedExts.data());
+
+    REPORT_INFO(this, "Supported extensions");
+    for (const VkExtensionProperties& props : supportedExts)
+        REPORT_INFO(this, "    %s (v%u)", props.extensionName, props.specVersion);
+
+    // Mandatory
+    desiredExts.push_back(VK_KHR_SYNCHRONIZATION_2_EXTENSION_NAME);
+
+    if (IsExtensionSupported(VK_KHR_SWAPCHAIN_EXTENSION_NAME, supportedExts)) // TODO: move to supportedFeatures?
+        desiredExts.push_back(VK_KHR_SWAPCHAIN_EXTENSION_NAME);
+
+#ifdef __APPLE__
+    if (IsExtensionSupported(VK_KHR_PORTABILITY_SUBSET_EXTENSION_NAME, supportedExts))
+        desiredExts.push_back(VK_KHR_PORTABILITY_SUBSET_EXTENSION_NAME);
+
+    if (IsExtensionSupported(VK_KHR_DYNAMIC_RENDERING_EXTENSION_NAME, supportedExts))
+        desiredExts.push_back(VK_KHR_DYNAMIC_RENDERING_EXTENSION_NAME);
+#endif
+
+    // Optional
+    if (IsExtensionSupported(VK_KHR_DEFERRED_HOST_OPERATIONS_EXTENSION_NAME, supportedExts))
+        desiredExts.push_back(VK_KHR_DEFERRED_HOST_OPERATIONS_EXTENSION_NAME);
+
+    if (IsExtensionSupported(VK_KHR_SHADER_NON_SEMANTIC_INFO_EXTENSION_NAME, supportedExts))
+        desiredExts.push_back(VK_KHR_SHADER_NON_SEMANTIC_INFO_EXTENSION_NAME); // at least for "printf"
+
+    if (IsExtensionSupported(VK_EXT_SAMPLE_LOCATIONS_EXTENSION_NAME, supportedExts))
     {
-        REPORT_ERROR(this, "Failed to load Vulkan loader: '%s'.", loaderPath);
-        return Result::UNSUPPORTED;
+        desiredExts.push_back(VK_EXT_SAMPLE_LOCATIONS_EXTENSION_NAME);
+        supportedFeatures.sampleLocations = true;
     }
 
-    // Create instance
-    Result res = ResolvePreInstanceDispatchTable();
-    if (res != Result::SUCCESS)
-        return res;
-
-    m_Instance = (VkInstance)deviceCreationVKDesc.vkInstance;
-
-    res = ResolveInstanceDispatchTable();
-    if (res != Result::SUCCESS)
-        return res;
-
-    // Find physical device
-    const VkPhysicalDevice* physicalDevices = (VkPhysicalDevice*)deviceCreationVKDesc.vkPhysicalDevices; // TODO: physical device indices?
-    m_PhysicalDevices.insert(m_PhysicalDevices.begin(), physicalDevices, physicalDevices + deviceCreationVKDesc.deviceGroupSize);
-
-    m_VK.GetPhysicalDeviceMemoryProperties(m_PhysicalDevices.front(), &m_MemoryProps);
-
-    FillFamilyIndices(true, deviceCreationVKDesc.queueFamilyIndices, deviceCreationVKDesc.queueFamilyIndexNum);
-
-    // Get adapter description as early as possible for meaningful error reporting
-    GetAdapterDesc();
-
-    // Create device
-    m_Device = (VkDevice)deviceCreationVKDesc.vkDevice;
-
-    res = ResolveDispatchTable();
-    if (res != Result::SUCCESS)
-        return res;
-
-    { // Instance extensions
-        uint32_t extensionNum = 0;
-        m_VK.EnumerateInstanceExtensionProperties(nullptr, &extensionNum, nullptr);
-
-        Vector<VkExtensionProperties> supportedExts(extensionNum, GetStdAllocator());
-        m_VK.EnumerateInstanceExtensionProperties(nullptr, &extensionNum, supportedExts.data());
-
-        if (IsExtensionSupported(VK_EXT_DEBUG_UTILS_EXTENSION_NAME, supportedExts))
-            supportedFeatures.debugUtils = true;
+    if (IsExtensionSupported(VK_EXT_CONSERVATIVE_RASTERIZATION_EXTENSION_NAME, supportedExts))
+    {
+        desiredExts.push_back(VK_EXT_CONSERVATIVE_RASTERIZATION_EXTENSION_NAME);
+        supportedFeatures.conservativeRaster = true;
     }
 
-    { // Device extensions
-        uint32_t extensionNum = 0;
-        m_VK.EnumerateDeviceExtensionProperties(m_PhysicalDevices.front(), nullptr, &extensionNum, nullptr);
+    if (IsExtensionSupported(VK_EXT_TRANSFORM_FEEDBACK_EXTENSION_NAME, supportedExts))
+    {
+        desiredExts.push_back(VK_EXT_TRANSFORM_FEEDBACK_EXTENSION_NAME);
+        supportedFeatures.transformFeedback = true;
+    }
 
-        Vector<VkExtensionProperties> supportedExts(extensionNum, GetStdAllocator());
-        m_VK.EnumerateDeviceExtensionProperties(m_PhysicalDevices.front(), nullptr, &extensionNum, supportedExts.data());
+    if (IsExtensionSupported(VK_KHR_FRAGMENT_SHADING_RATE_EXTENSION_NAME, supportedExts))
+    {
+        desiredExts.push_back(VK_KHR_FRAGMENT_SHADING_RATE_EXTENSION_NAME);
+        supportedFeatures.shadingRate = true;
+    }
+
+    if (IsExtensionSupported(VK_EXT_MESH_SHADER_EXTENSION_NAME, supportedExts))
+    {
+        desiredExts.push_back(VK_EXT_MESH_SHADER_EXTENSION_NAME);
+        supportedFeatures.meshShader = true;
+    }
+
+    if (IsExtensionSupported(VK_KHR_PIPELINE_LIBRARY_EXTENSION_NAME, supportedExts))
+        desiredExts.push_back(VK_KHR_PIPELINE_LIBRARY_EXTENSION_NAME);
+
+    // RT consumes memory: enable if supported and not disabled, store availability
+    if (!disableRayTracing)
+    {
+        bool isRayTracingSupported = true;
+
+        // Mandatory
+        if (IsExtensionSupported(VK_KHR_RAY_TRACING_PIPELINE_EXTENSION_NAME, supportedExts))
+            desiredExts.push_back(VK_KHR_RAY_TRACING_PIPELINE_EXTENSION_NAME);
+        else
+            isRayTracingSupported = false;
 
         if (IsExtensionSupported(VK_KHR_ACCELERATION_STRUCTURE_EXTENSION_NAME, supportedExts))
-            supportedFeatures.rayTracing = true;
+            desiredExts.push_back(VK_KHR_ACCELERATION_STRUCTURE_EXTENSION_NAME);
+        else
+            isRayTracingSupported = false;
 
-        if (IsExtensionSupported(VK_EXT_SAMPLE_LOCATIONS_EXTENSION_NAME, supportedExts))
-            supportedFeatures.sampleLocations = true;
+        supportedFeatures.rayTracing = isRayTracingSupported;
 
-        if (IsExtensionSupported(VK_EXT_CONSERVATIVE_RASTERIZATION_EXTENSION_NAME, supportedExts))
-            supportedFeatures.conservativeRaster = true;
-
-        if (IsExtensionSupported(VK_EXT_OPACITY_MICROMAP_EXTENSION_NAME, supportedExts))
-            supportedFeatures.microMap = true;
-
-        if (IsExtensionSupported(VK_EXT_MESH_SHADER_EXTENSION_NAME, supportedExts))
-            supportedFeatures.meshShader = true;
+        // Optional
+        if (IsExtensionSupported(VK_KHR_RAY_QUERY_EXTENSION_NAME, supportedExts))
+            desiredExts.push_back(VK_KHR_RAY_QUERY_EXTENSION_NAME);
     }
 
-    // Finalize
-    CreateCommandQueues();
-    FillDesc(false);
+    // Dependent stuff
+    if (supportedFeatures.rayTracing && IsExtensionSupported(VK_EXT_OPACITY_MICROMAP_EXTENSION_NAME, supportedExts))
+    {
+        desiredExts.push_back(VK_EXT_OPACITY_MICROMAP_EXTENSION_NAME);
+        supportedFeatures.opacityMicroMap = true;
+    }
+}
 
-    return FillFunctionTable(m_CoreInterface);
+Result DeviceVK::CreateLogicalDevice(const DeviceCreationDesc& deviceCreationDesc)
+{
+    // Process extensions
+    Vector<const char*> desiredExts(GetStdAllocator());
+    for (uint32_t i = 0; i < deviceCreationDesc.vulkanExtensions.deviceExtensionNum; i++)
+        desiredExts.push_back(deviceCreationDesc.vulkanExtensions.deviceExtensions[i]);
+
+    ProcessDeviceExtensions(desiredExts, deviceCreationDesc.disableVulkanRayTracing);
+
+    // Chain extensions
+#define APPEND_EXT(desc) *tail = &desc; tail = &desc.pNext
+
+    VkPhysicalDeviceFeatures2 features2 = {VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FEATURES_2};
+    void** tail = &features2.pNext;
+
+    VkPhysicalDeviceVulkan11Features features11 = {VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_1_FEATURES};
+    APPEND_EXT(features11);
+
+    VkPhysicalDeviceVulkan12Features features12 = {VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_2_FEATURES};
+    APPEND_EXT(features12);
+
+    VkPhysicalDeviceVulkan13Features features13 = {VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_3_FEATURES};
+    APPEND_EXT(features13);
+
+    VkPhysicalDeviceTransformFeedbackFeaturesEXT transformFeedbackFeatures = {VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_TRANSFORM_FEEDBACK_FEATURES_EXT};
+    if (supportedFeatures.transformFeedback)
+    {
+        APPEND_EXT(transformFeedbackFeatures);
+    }
+
+    VkPhysicalDeviceFragmentShadingRateFeaturesKHR shadingRateFeatures = {VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FRAGMENT_SHADING_RATE_FEATURES_KHR};
+    if (supportedFeatures.shadingRate)
+    {
+        APPEND_EXT(shadingRateFeatures);
+    }
+
+    VkPhysicalDeviceRayTracingPipelineFeaturesKHR rayTracingFeatures = {VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_RAY_TRACING_PIPELINE_FEATURES_KHR};
+    VkPhysicalDeviceAccelerationStructureFeaturesKHR accelerationStructureFeatures = {VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_ACCELERATION_STRUCTURE_FEATURES_KHR};
+    VkPhysicalDeviceRayQueryFeaturesKHR rayQueryFeatures = {VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_RAY_QUERY_FEATURES_KHR};
+    if (supportedFeatures.rayTracing)
+    {
+        APPEND_EXT(rayTracingFeatures);
+        APPEND_EXT(accelerationStructureFeatures);
+        APPEND_EXT(rayQueryFeatures);
+    }
+
+    VkPhysicalDeviceOpacityMicromapFeaturesEXT micromapFeatures = {VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_OPACITY_MICROMAP_FEATURES_EXT};
+    if (supportedFeatures.opacityMicroMap)
+    {
+        APPEND_EXT(micromapFeatures);
+    }
+
+    VkPhysicalDeviceMeshShaderFeaturesEXT meshShaderFeatures = {VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MESH_SHADER_FEATURES_EXT};
+    if (supportedFeatures.meshShader)
+    {
+        APPEND_EXT(meshShaderFeatures);
+    }
+
+#undef APPEND_EXT
+
+    // Query extensions availability
+    m_VK.GetPhysicalDeviceFeatures2(m_PhysicalDevices.front(), &features2);
+
+    // Disable features here
+    // ...
+
+    // Create device
+    Vector<VkDeviceQueueCreateInfo> queues(GetStdAllocator());
+    const float priorities = 1.0f;
+    for (size_t i = 0; i < m_FamilyIndices.size(); i++)
+    {
+        if (m_FamilyIndices[i] == INVALID_FAMILY_INDEX)
+            continue;
+
+        VkDeviceQueueCreateInfo info = { VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO };
+        info.queueCount = 1;
+        info.queueFamilyIndex = m_FamilyIndices[i];
+        info.pQueuePriorities = &priorities;
+        queues.push_back(info);
+    }
+
+    VkDeviceCreateInfo deviceCreateInfo = { VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO };
+    deviceCreateInfo.pNext = &features2;
+    deviceCreateInfo.queueCreateInfoCount = (uint32_t)queues.size();
+    deviceCreateInfo.pQueueCreateInfos = queues.data();
+    deviceCreateInfo.enabledExtensionCount = (uint32_t)desiredExts.size();
+    deviceCreateInfo.ppEnabledExtensionNames = desiredExts.data();
+
+    VkDeviceGroupDeviceCreateInfo deviceGroupInfo = { VK_STRUCTURE_TYPE_DEVICE_GROUP_DEVICE_CREATE_INFO };
+    if (m_PhysicalDevices.size() > 1)
+    {
+        deviceGroupInfo.pNext = deviceCreateInfo.pNext;
+        deviceGroupInfo.physicalDeviceCount = (uint32_t)m_PhysicalDevices.size();
+        deviceGroupInfo.pPhysicalDevices = m_PhysicalDevices.data();
+        deviceCreateInfo.pNext = &deviceGroupInfo;
+    }
+
+    const VkResult result = m_VK.CreateDevice(m_PhysicalDevices.front(), &deviceCreateInfo, m_AllocationCallbackPtr, &m_Device);
+
+    RETURN_ON_FAILURE(this, result == VK_SUCCESS, GetReturnCode(result), "Can't create a device: "
+        "vkCreateDevice returned %d.", (int32_t)result);
+
+    return Result::SUCCESS;
 }
 
 bool DeviceVK::GetMemoryType(MemoryLocation memoryLocation, uint32_t memoryTypeMask, MemoryTypeInfo& memoryTypeInfo) const
@@ -958,6 +1141,7 @@ void DeviceVK::FillDesc(bool enableValidation)
     }
 
     // Ray tracing
+    m_Desc.isRaytracingSupported = supportedFeatures.rayTracing;
     if (supportedFeatures.rayTracing)
     {
         VkPhysicalDeviceRayTracingPipelinePropertiesKHR rayTracingProps = { VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_RAY_TRACING_PIPELINE_PROPERTIES_KHR };
@@ -976,7 +1160,8 @@ void DeviceVK::FillDesc(bool enableValidation)
     }
 
     // Mesh shader
-    if (!supportedFeatures.meshShader)
+    m_Desc.isMeshShaderSupported = supportedFeatures.meshShader;
+    if (supportedFeatures.meshShader)
     {
         VkPhysicalDeviceMeshShaderPropertiesEXT meshShaderProps = { VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MESH_SHADER_PROPERTIES_EXT };
 
@@ -984,21 +1169,14 @@ void DeviceVK::FillDesc(bool enableValidation)
 
         m_VK.GetPhysicalDeviceProperties2(m_PhysicalDevices.front(), &props);
 
-        m_Desc.meshTaskWorkGroupInvocationMaxNum = meshShaderProps.maxTaskWorkGroupInvocations;
-        m_Desc.meshTaskWorkGroupMaxDim[0] = meshShaderProps.maxTaskWorkGroupSize[0];
-        m_Desc.meshTaskWorkGroupMaxDim[1] = meshShaderProps.maxTaskWorkGroupSize[1];
-        m_Desc.meshTaskWorkGroupMaxDim[2] = meshShaderProps.maxTaskWorkGroupSize[2];
-        m_Desc.meshTaskTotalMemoryMaxSize = meshShaderProps.maxTaskPayloadAndSharedMemorySize;
-        m_Desc.meshTaskOutputMaxNum = meshShaderProps.maxMeshWorkGroupTotalCount;
-        m_Desc.meshWorkGroupInvocationMaxNum = meshShaderProps.maxMeshWorkGroupInvocations;
-        m_Desc.meshWorkGroupMaxDim[0] = meshShaderProps.maxMeshWorkGroupSize[0];
-        m_Desc.meshWorkGroupMaxDim[1] = meshShaderProps.maxMeshWorkGroupSize[1];
-        m_Desc.meshWorkGroupMaxDim[2] = meshShaderProps.maxMeshWorkGroupSize[2];
-        m_Desc.meshOutputVertexMaxNum = meshShaderProps.maxMeshOutputVertices;
-        m_Desc.meshOutputPrimitiveMaxNum = meshShaderProps.maxMeshOutputPrimitives;
-        m_Desc.meshMultiviewViewMaxNum = meshShaderProps.maxMeshMultiviewViewCount;
-        m_Desc.meshOutputPerVertexGranularity = meshShaderProps.meshOutputPerVertexGranularity;
-        m_Desc.meshOutputPerPrimitiveGranularity = meshShaderProps.meshOutputPerPrimitiveGranularity;
+        m_Desc.meshControlSharedMemoryMaxSize = meshShaderProps.maxTaskSharedMemorySize;
+        m_Desc.meshControlWorkGroupInvocationMaxNum = meshShaderProps.maxTaskWorkGroupInvocations;
+        m_Desc.meshControlPayloadMaxSize = meshShaderProps.maxTaskPayloadSize;
+        m_Desc.meshEvaluationOutputVerticesMaxNum = meshShaderProps.maxMeshOutputVertices;
+        m_Desc.meshEvaluationOutputPrimitiveMaxNum = meshShaderProps.maxMeshOutputPrimitives;
+        m_Desc.meshEvaluationOutputComponentMaxNum = meshShaderProps.maxMeshOutputComponents;
+        m_Desc.meshEvaluationSharedMemoryMaxSize = meshShaderProps.maxMeshSharedMemorySize;
+        m_Desc.meshEvaluationWorkGroupInvocationMaxNum = meshShaderProps.maxMeshWorkGroupInvocations;
     }
 }
 
@@ -1528,7 +1706,7 @@ Result DeviceVK::ResolveDispatchTable()
     RESOLVE_DEVICE_FUNCTION(CmdCopyImage);
     RESOLVE_DEVICE_FUNCTION(CmdCopyBufferToImage);
     RESOLVE_DEVICE_FUNCTION(CmdCopyImageToBuffer);
-    RESOLVE_DEVICE_FUNCTION(CmdPipelineBarrier);
+    RESOLVE_DEVICE_FUNCTION(CmdPipelineBarrier2);
     RESOLVE_DEVICE_FUNCTION(CmdBeginQuery);
     RESOLVE_DEVICE_FUNCTION(CmdEndQuery);
     RESOLVE_DEVICE_FUNCTION(CmdWriteTimestamp);

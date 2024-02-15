@@ -48,8 +48,8 @@ private:
     void FillMultisampleState(const GraphicsPipelineDesc& graphicsPipelineDesc, VkPipelineMultisampleStateCreateInfo& state) const;
     void FillDepthStencilState(const GraphicsPipelineDesc& graphicsPipelineDesc, VkPipelineDepthStencilStateCreateInfo& state) const;
     void FillColorBlendState(const GraphicsPipelineDesc& graphicsPipelineDesc, VkPipelineColorBlendStateCreateInfo& state) const;
-    void FillDynamicState(VkPipelineDynamicStateCreateInfo& state) const;
     void FillGroupIndices(const RayTracingPipelineDesc& rayTracingPipelineDesc, uint32_t* groupIndices);
+    void FillDynamicState(VkPipelineDynamicStateCreateInfo& state);
 
 private:
     DeviceVK& m_Device;

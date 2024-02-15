@@ -6,30 +6,17 @@
 
 using namespace nri;
 
-extern const uint16_t ROOT_PARAMETER_UNUSED;
-
 template<typename DescComponent, D3D12_PIPELINE_STATE_SUBOBJECT_TYPE subobjectType>
 struct alignas(void*) PipelineDescComponent
 {
     PipelineDescComponent() = default;
-    operator DescComponent&();
-    void operator= (const DescComponent& desc);
+    
+    inline void operator= (const DescComponent& d)
+    { desc = d; }
 
     D3D12_PIPELINE_STATE_SUBOBJECT_TYPE type = subobjectType;
     DescComponent desc = {};
 };
-
-template<typename DescComponent, D3D12_PIPELINE_STATE_SUBOBJECT_TYPE subobjectType>
-inline PipelineDescComponent<DescComponent, subobjectType>::operator DescComponent&()
-{
-    return desc;
-}
-
-template<typename DescComponent, D3D12_PIPELINE_STATE_SUBOBJECT_TYPE subobjectType>
-inline void PipelineDescComponent<DescComponent, subobjectType>::operator= (const DescComponent& d)
-{
-    this->desc = d;
-}
 
 typedef PipelineDescComponent<ID3D12RootSignature*, D3D12_PIPELINE_STATE_SUBOBJECT_TYPE_ROOT_SIGNATURE> PipelineRootSignature;
 typedef PipelineDescComponent<D3D12_INPUT_LAYOUT_DESC, D3D12_PIPELINE_STATE_SUBOBJECT_TYPE_INPUT_LAYOUT> PipelineInputLayout;
@@ -47,16 +34,17 @@ typedef PipelineDescComponent<DXGI_SAMPLE_DESC, D3D12_PIPELINE_STATE_SUBOBJECT_T
 typedef PipelineDescComponent<UINT, D3D12_PIPELINE_STATE_SUBOBJECT_TYPE_SAMPLE_MASK> PipelineSampleMask;
 typedef PipelineDescComponent<D3D12_BLEND_DESC, D3D12_PIPELINE_STATE_SUBOBJECT_TYPE_BLEND> PipelineBlend;
 typedef PipelineDescComponent<D3D12_RASTERIZER_DESC, D3D12_PIPELINE_STATE_SUBOBJECT_TYPE_RASTERIZER> PipelineRasterizer;
-typedef PipelineDescComponent<D3D12_DEPTH_STENCIL_DESC, D3D12_PIPELINE_STATE_SUBOBJECT_TYPE_DEPTH_STENCIL> PipelineDepthStencil;
+typedef PipelineDescComponent<D3D12_DEPTH_STENCIL_DESC1, D3D12_PIPELINE_STATE_SUBOBJECT_TYPE_DEPTH_STENCIL1> PipelineDepthStencil;
 typedef PipelineDescComponent<DXGI_FORMAT, D3D12_PIPELINE_STATE_SUBOBJECT_TYPE_DEPTH_STENCIL_FORMAT> PipelineDepthStencilFormat;
 typedef PipelineDescComponent<D3D12_RT_FORMAT_ARRAY, D3D12_PIPELINE_STATE_SUBOBJECT_TYPE_RENDER_TARGET_FORMATS> PipelineRenderTargetFormats;
 
+static_assert( (uint32_t)PrimitiveRestart::DISABLED == D3D12_INDEX_BUFFER_STRIP_CUT_VALUE_DISABLED, "Enum mismatch." );
+static_assert( (uint32_t)PrimitiveRestart::INDICES_UINT16 == D3D12_INDEX_BUFFER_STRIP_CUT_VALUE_0xFFFF, "Enum mismatch." );
+static_assert( (uint32_t)PrimitiveRestart::INDICES_UINT32 == D3D12_INDEX_BUFFER_STRIP_CUT_VALUE_0xFFFFFFFF, "Enum mismatch." );
+
 Result PipelineD3D12::CreateFromStream(const GraphicsPipelineDesc& graphicsPipelineDesc)
 {
-    m_PipelineLayout = (const PipelineLayoutD3D12*)graphicsPipelineDesc.pipelineLayout;
-
-    if (graphicsPipelineDesc.inputAssembly != nullptr)
-        m_PrimitiveTopology = ::GetPrimitiveTopology(graphicsPipelineDesc.inputAssembly->topology, graphicsPipelineDesc.inputAssembly->tessControlPointNum);
+    CHECK(m_Device.GetVersion() >= 2, "Newer interface needed");
 
     struct Stream
     {
@@ -82,48 +70,52 @@ Result PipelineD3D12::CreateFromStream(const GraphicsPipelineDesc& graphicsPipel
     };
 
     Stream stream = {};
-
     stream.rootSignature = *m_PipelineLayout;
     stream.nodeMask = NRI_TEMP_NODE_MASK;
 
-    for (uint32_t i = 0; i < graphicsPipelineDesc.shaderStageNum; i++)
+    for (uint32_t i = 0; i < graphicsPipelineDesc.shaderNum; i++)
     {
-        const ShaderDesc& shader = graphicsPipelineDesc.shaderStages[i];
-        if (shader.stage == ShaderStage::VERTEX)
-            FillShaderBytecode(stream.vertexShader, shader);
-        else if (shader.stage == ShaderStage::TESS_CONTROL)
-            FillShaderBytecode(stream.hullShader, shader);
-        else if (shader.stage == ShaderStage::TESS_EVALUATION)
-            FillShaderBytecode(stream.domainShader, shader);
-        else if (shader.stage == ShaderStage::GEOMETRY)
-            FillShaderBytecode(stream.geometryShader, shader);
-        else if (shader.stage == ShaderStage::MESH_CONTROL)
-            FillShaderBytecode(stream.amplificationShader, shader);
-        else if (shader.stage == ShaderStage::MESH_EVALUATION)
-            FillShaderBytecode(stream.meshShader, shader);
-        else if (shader.stage == ShaderStage::FRAGMENT)
-            FillShaderBytecode(stream.pixelShader, shader);
+        const ShaderDesc& shader = graphicsPipelineDesc.shaders[i];
+        if (shader.stage == StageBits::VERTEX_SHADER)
+            FillShaderBytecode(stream.vertexShader.desc, shader);
+        else if (shader.stage == StageBits::TESS_CONTROL_SHADER)
+            FillShaderBytecode(stream.hullShader.desc, shader);
+        else if (shader.stage == StageBits::TESS_EVALUATION_SHADER)
+            FillShaderBytecode(stream.domainShader.desc, shader);
+        else if (shader.stage == StageBits::GEOMETRY_SHADER)
+            FillShaderBytecode(stream.geometryShader.desc, shader);
+        else if (shader.stage == StageBits::MESH_CONTROL_SHADER)
+            FillShaderBytecode(stream.amplificationShader.desc, shader);
+        else if (shader.stage == StageBits::MESH_EVALUATION_SHADER)
+            FillShaderBytecode(stream.meshShader.desc, shader);
+        else if (shader.stage == StageBits::FRAGMENT_SHADER)
+            FillShaderBytecode(stream.pixelShader.desc, shader);
+        else
+            return Result::INVALID_ARGUMENT;
     }
 
     D3D12_INPUT_LAYOUT_DESC inputLayout = {};
-
-    if (graphicsPipelineDesc.inputAssembly != nullptr)
+    uint32_t attributesNum = graphicsPipelineDesc.inputAssembly ? graphicsPipelineDesc.inputAssembly->attributeNum : 0;
+    inputLayout.pInputElementDescs = STACK_ALLOC(D3D12_INPUT_ELEMENT_DESC, attributesNum);
+    if (graphicsPipelineDesc.inputAssembly)
     {
+        FillInputLayout(inputLayout, graphicsPipelineDesc);
+
+        m_PrimitiveTopology = ::GetPrimitiveTopology(graphicsPipelineDesc.inputAssembly->topology, graphicsPipelineDesc.inputAssembly->tessControlPointNum);
+
         stream.primitiveTopology = GetPrimitiveTopologyType(graphicsPipelineDesc.inputAssembly->topology);
         stream.indexBufferStripCutValue = (D3D12_INDEX_BUFFER_STRIP_CUT_VALUE)graphicsPipelineDesc.inputAssembly->primitiveRestart;
-
-        inputLayout.pInputElementDescs = STACK_ALLOC(D3D12_INPUT_ELEMENT_DESC, graphicsPipelineDesc.inputAssembly->attributeNum);
-        FillInputLayout(inputLayout, graphicsPipelineDesc);
         stream.inputLayout = inputLayout;
     }
 
-    FillRasterizerState(stream.rasterizer, graphicsPipelineDesc);
-    FillBlendState(stream.blend, graphicsPipelineDesc);
-    FillSampleDesc(stream.sampleDesc, stream.sampleMask.desc, graphicsPipelineDesc);
+    FillRasterizerState(stream.rasterizer.desc, graphicsPipelineDesc);
+    FillBlendState(stream.blend.desc, graphicsPipelineDesc);
+    FillSampleDesc(stream.sampleDesc.desc, stream.sampleMask.desc, graphicsPipelineDesc);
 
-    if (graphicsPipelineDesc.outputMerger != nullptr)
+    if (graphicsPipelineDesc.outputMerger)
     {
-        FillDepthStencilState(stream.depthStencil, *graphicsPipelineDesc.outputMerger);
+        FillDepthStencilState((D3D12_DEPTH_STENCIL_DESC*)&stream.depthStencil.desc, *graphicsPipelineDesc.outputMerger);
+        stream.depthStencil.desc.DepthBoundsTestEnable = graphicsPipelineDesc.outputMerger->depth.boundsTest ? 1 : 0;
         stream.depthStencilFormat = GetDxgiFormat(graphicsPipelineDesc.outputMerger->depthStencilFormat).typed;
 
         stream.renderTargetFormats.desc.NumRenderTargets = graphicsPipelineDesc.outputMerger->colorNum;
@@ -135,50 +127,51 @@ Result PipelineD3D12::CreateFromStream(const GraphicsPipelineDesc& graphicsPipel
     pipelineStateStreamDesc.pPipelineStateSubobjectStream = &stream;
     pipelineStateStreamDesc.SizeInBytes = sizeof(stream);
 
-    HRESULT hr = ((ID3D12Device2*)m_Device)->CreatePipelineState(&pipelineStateStreamDesc, IID_PPV_ARGS(&m_PipelineState));
-    RETURN_ON_BAD_HRESULT(&m_Device, hr, "ID3D12Device::CreatePipelineState()");
-
-    m_IsGraphicsPipeline = true;
+    HRESULT hr = m_Device->CreatePipelineState(&pipelineStateStreamDesc, IID_PPV_ARGS(&m_PipelineState));
+    RETURN_ON_BAD_HRESULT(&m_Device, hr, "ID3D12Device2::CreatePipelineState()");
 
     return Result::SUCCESS;
 }
 
 Result PipelineD3D12::Create(const GraphicsPipelineDesc& graphicsPipelineDesc)
 {
-    if (m_Device.IsMeshShaderSupported())
+    m_PipelineLayout = (const PipelineLayoutD3D12*)graphicsPipelineDesc.pipelineLayout;
+    m_IsGraphicsPipeline = true;
+
+    if (m_Device.GetVersion() >= 2)
         return CreateFromStream(graphicsPipelineDesc);
 
     D3D12_GRAPHICS_PIPELINE_STATE_DESC graphicsPipleineStateDesc = {};
     graphicsPipleineStateDesc.NodeMask = NRI_TEMP_NODE_MASK;
-
-    m_PipelineLayout = (const PipelineLayoutD3D12*)graphicsPipelineDesc.pipelineLayout;
-
     graphicsPipleineStateDesc.pRootSignature = *m_PipelineLayout;
 
-    graphicsPipleineStateDesc.PrimitiveTopologyType = GetPrimitiveTopologyType(graphicsPipelineDesc.inputAssembly->topology);
-    m_PrimitiveTopology = ::GetPrimitiveTopology(graphicsPipelineDesc.inputAssembly->topology, graphicsPipelineDesc.inputAssembly->tessControlPointNum);
-    graphicsPipleineStateDesc.InputLayout.pInputElementDescs = STACK_ALLOC(D3D12_INPUT_ELEMENT_DESC, graphicsPipelineDesc.inputAssembly->attributeNum);
-
-    static_assert( (uint32_t)PrimitiveRestart::DISABLED == D3D12_INDEX_BUFFER_STRIP_CUT_VALUE_DISABLED, "Enum mismatch." );
-    static_assert( (uint32_t)PrimitiveRestart::INDICES_UINT16 == D3D12_INDEX_BUFFER_STRIP_CUT_VALUE_0xFFFF, "Enum mismatch." );
-    static_assert( (uint32_t)PrimitiveRestart::INDICES_UINT32 == D3D12_INDEX_BUFFER_STRIP_CUT_VALUE_0xFFFFFFFF, "Enum mismatch." );
-    graphicsPipleineStateDesc.IBStripCutValue = (D3D12_INDEX_BUFFER_STRIP_CUT_VALUE)graphicsPipelineDesc.inputAssembly->primitiveRestart;
-
-    FillInputLayout(graphicsPipleineStateDesc.InputLayout, graphicsPipelineDesc);
-
-    for (uint32_t i = 0; i < graphicsPipelineDesc.shaderStageNum; i++)
+    uint32_t attributesNum = graphicsPipelineDesc.inputAssembly ? graphicsPipelineDesc.inputAssembly->attributeNum : 0;
+    graphicsPipleineStateDesc.InputLayout.pInputElementDescs = STACK_ALLOC(D3D12_INPUT_ELEMENT_DESC, attributesNum);
+    if (graphicsPipelineDesc.inputAssembly)
     {
-        const ShaderDesc& shader = graphicsPipelineDesc.shaderStages[i];
-        if (shader.stage == ShaderStage::VERTEX)
+        FillInputLayout(graphicsPipleineStateDesc.InputLayout, graphicsPipelineDesc);
+
+        m_PrimitiveTopology = ::GetPrimitiveTopology(graphicsPipelineDesc.inputAssembly->topology, graphicsPipelineDesc.inputAssembly->tessControlPointNum);
+
+        graphicsPipleineStateDesc.PrimitiveTopologyType = GetPrimitiveTopologyType(graphicsPipelineDesc.inputAssembly->topology);
+        graphicsPipleineStateDesc.IBStripCutValue = (D3D12_INDEX_BUFFER_STRIP_CUT_VALUE)graphicsPipelineDesc.inputAssembly->primitiveRestart;
+    }
+
+    for (uint32_t i = 0; i < graphicsPipelineDesc.shaderNum; i++)
+    {
+        const ShaderDesc& shader = graphicsPipelineDesc.shaders[i];
+        if (shader.stage == StageBits::VERTEX_SHADER)
             FillShaderBytecode(graphicsPipleineStateDesc.VS, shader);
-        else if (shader.stage == ShaderStage::TESS_CONTROL)
+        else if (shader.stage == StageBits::TESS_CONTROL_SHADER)
             FillShaderBytecode(graphicsPipleineStateDesc.HS, shader);
-        else if (shader.stage == ShaderStage::TESS_EVALUATION)
+        else if (shader.stage == StageBits::TESS_EVALUATION_SHADER)
             FillShaderBytecode(graphicsPipleineStateDesc.DS, shader);
-        else if (shader.stage == ShaderStage::GEOMETRY)
+        else if (shader.stage == StageBits::GEOMETRY_SHADER)
             FillShaderBytecode(graphicsPipleineStateDesc.GS, shader);
-        else if (shader.stage == ShaderStage::FRAGMENT)
+        else if (shader.stage == StageBits::FRAGMENT_SHADER)
             FillShaderBytecode(graphicsPipleineStateDesc.PS, shader);
+        else
+            return Result::INVALID_ARGUMENT;
     }
 
     FillRasterizerState(graphicsPipleineStateDesc.RasterizerState, graphicsPipelineDesc);
@@ -187,7 +180,7 @@ Result PipelineD3D12::Create(const GraphicsPipelineDesc& graphicsPipelineDesc)
 
     if (graphicsPipelineDesc.outputMerger)
     {
-        FillDepthStencilState(graphicsPipleineStateDesc.DepthStencilState, *graphicsPipelineDesc.outputMerger);
+        FillDepthStencilState(&graphicsPipleineStateDesc.DepthStencilState, *graphicsPipelineDesc.outputMerger);
         graphicsPipleineStateDesc.DSVFormat = GetDxgiFormat(graphicsPipelineDesc.outputMerger->depthStencilFormat).typed;
 
         graphicsPipleineStateDesc.NumRenderTargets = graphicsPipelineDesc.outputMerger->colorNum;
@@ -195,10 +188,8 @@ Result PipelineD3D12::Create(const GraphicsPipelineDesc& graphicsPipelineDesc)
             graphicsPipleineStateDesc.RTVFormats[i] = GetDxgiFormat(graphicsPipelineDesc.outputMerger->color[i].format).typed;
     }
 
-    HRESULT hr = ((ID3D12Device*)m_Device)->CreateGraphicsPipelineState(&graphicsPipleineStateDesc, IID_PPV_ARGS(&m_PipelineState));
+    HRESULT hr = m_Device->CreateGraphicsPipelineState(&graphicsPipleineStateDesc, IID_PPV_ARGS(&m_PipelineState));
     RETURN_ON_BAD_HRESULT(&m_Device, hr, "ID3D12Device::CreateGraphicsPipelineState()");
-
-    m_IsGraphicsPipeline = true;
 
     return Result::SUCCESS;
 }
@@ -212,9 +203,9 @@ Result PipelineD3D12::Create(const ComputePipelineDesc& computePipelineDesc)
 
     computePipleineStateDesc.pRootSignature = *m_PipelineLayout;
 
-    FillShaderBytecode(computePipleineStateDesc.CS, computePipelineDesc.computeShader);
+    FillShaderBytecode(computePipleineStateDesc.CS, computePipelineDesc.shader);
 
-    HRESULT hr = ((ID3D12Device*)m_Device)->CreateComputePipelineState(&computePipleineStateDesc, IID_PPV_ARGS(&m_PipelineState));
+    HRESULT hr = m_Device->CreateComputePipelineState(&computePipleineStateDesc, IID_PPV_ARGS(&m_PipelineState));
     RETURN_ON_BAD_HRESULT(&m_Device, hr, "ID3D12Device::CreateComputePipelineState()");
 
     return Result::SUCCESS;
@@ -222,9 +213,8 @@ Result PipelineD3D12::Create(const ComputePipelineDesc& computePipelineDesc)
 
 Result PipelineD3D12::Create(const RayTracingPipelineDesc& rayTracingPipelineDesc)
 {
-    ID3D12Device5* device5 = m_Device;
-    if (!device5)
-        return Result::FAILURE;
+    if (m_Device.GetVersion() < 5)
+        return Result::UNSUPPORTED;
 
     m_PipelineLayout = (const PipelineLayoutD3D12*)rayTracingPipelineDesc.pipelineLayout;
 
@@ -277,8 +267,8 @@ Result PipelineD3D12::Create(const RayTracingPipelineDesc& rayTracingPipelineDes
     Vector<D3D12_DXIL_LIBRARY_DESC> libraryDescs(rayTracingPipelineDesc.shaderLibrary->shaderNum, m_Device.GetStdAllocator());
     for (uint32_t i = 0; i < rayTracingPipelineDesc.shaderLibrary->shaderNum; i++)
     {
-        libraryDescs[i].DXILLibrary.pShaderBytecode = rayTracingPipelineDesc.shaderLibrary->shaderDescs[i].bytecode;
-        libraryDescs[i].DXILLibrary.BytecodeLength = (size_t)rayTracingPipelineDesc.shaderLibrary->shaderDescs[i].size;
+        libraryDescs[i].DXILLibrary.pShaderBytecode = rayTracingPipelineDesc.shaderLibrary->shaders[i].bytecode;
+        libraryDescs[i].DXILLibrary.BytecodeLength = (size_t)rayTracingPipelineDesc.shaderLibrary->shaders[i].size;
         libraryDescs[i].NumExports = 0;
         libraryDescs[i].pExports = nullptr;
 
@@ -290,7 +280,7 @@ Result PipelineD3D12::Create(const RayTracingPipelineDesc& rayTracingPipelineDes
     Vector<std::wstring> wEntryPointNames(rayTracingPipelineDesc.shaderLibrary->shaderNum, m_Device.GetStdAllocator());
     for (uint32_t i = 0; i < rayTracingPipelineDesc.shaderLibrary->shaderNum; i++)
     {
-        const ShaderDesc& shader = rayTracingPipelineDesc.shaderLibrary->shaderDescs[i];
+        const ShaderDesc& shader = rayTracingPipelineDesc.shaderLibrary->shaders[i];
         const size_t entryPointNameLength = shader.entryPointName != nullptr ? strlen(shader.entryPointName) + 1 : 0;
         wEntryPointNames[i].resize(entryPointNameLength);
         ConvertCharToWchar(shader.entryPointName, (wchar_t*)wEntryPointNames[i].data(), entryPointNameLength);
@@ -310,9 +300,9 @@ Result PipelineD3D12::Create(const RayTracingPipelineDesc& rayTracingPipelineDes
             if (shaderIndex)
             {
                 uint32_t lookupIndex = shaderIndex - 1;
-                const ShaderDesc& shader = rayTracingPipelineDesc.shaderLibrary->shaderDescs[lookupIndex];
+                const ShaderDesc& shader = rayTracingPipelineDesc.shaderLibrary->shaders[lookupIndex];
                 const std::wstring& entryPointName = wEntryPointNames[lookupIndex];
-                if (shader.stage == ShaderStage::RAYGEN || shader.stage == ShaderStage::MISS || shader.stage == ShaderStage::CALLABLE)
+                if (shader.stage == StageBits::RAYGEN_SHADER || shader.stage == StageBits::MISS_SHADER || shader.stage == StageBits::CALLABLE_SHADER)
                 {
                     shaderIndentifierName = entryPointName;
                     isHitGroup = false;
@@ -321,14 +311,14 @@ Result PipelineD3D12::Create(const RayTracingPipelineDesc& rayTracingPipelineDes
 
                 switch (shader.stage)
                 {
-                case ShaderStage::INTERSECTION:
+                case StageBits::INTERSECTION_SHADER:
                     hitGroups[hitGroupNum].IntersectionShaderImport = entryPointName.c_str();
                     hasIntersectionShader = true;
                     break;
-                case ShaderStage::CLOSEST_HIT:
+                case StageBits::CLOSEST_HIT_SHADER:
                     hitGroups[hitGroupNum].ClosestHitShaderImport = entryPointName.c_str();
                     break;
-                case ShaderStage::ANY_HIT:
+                case StageBits::ANY_HIT_SHADER:
                     hitGroups[hitGroupNum].AnyHitShaderImport = entryPointName.c_str();
                     break;
                 }
@@ -355,7 +345,7 @@ Result PipelineD3D12::Create(const RayTracingPipelineDesc& rayTracingPipelineDes
     stateObjectDesc.NumSubobjects = stateSubobjectNum;
     stateObjectDesc.pSubobjects = stateSubobjectNum ? &stateSubobjects[0] : nullptr;
 
-    HRESULT hr = device5->CreateStateObject(&stateObjectDesc, IID_PPV_ARGS(&m_StateObject));
+    HRESULT hr = m_Device->CreateStateObject(&stateObjectDesc, IID_PPV_ARGS(&m_StateObject));
     RETURN_ON_BAD_HRESULT(&m_Device, hr, "ID3D12Device5::CreateStateObject()");
 
     m_StateObject->QueryInterface(&m_StateObjectProperties);
@@ -438,22 +428,22 @@ void PipelineD3D12::FillRasterizerState(D3D12_RASTERIZER_DESC& rasterizerDesc, c
     rasterizerDesc.ConservativeRaster = rasterizationDesc.conservativeRasterization ? D3D12_CONSERVATIVE_RASTERIZATION_MODE_ON : D3D12_CONSERVATIVE_RASTERIZATION_MODE_OFF;
 }
 
-void PipelineD3D12::FillDepthStencilState(D3D12_DEPTH_STENCIL_DESC& depthStencilDesc, const OutputMergerDesc& outputMergerDesc) const
+void PipelineD3D12::FillDepthStencilState(D3D12_DEPTH_STENCIL_DESC* depthStencilDesc, const OutputMergerDesc& outputMergerDesc) const
 {
-    depthStencilDesc.DepthEnable = outputMergerDesc.depth.compareFunc == CompareFunc::NONE ? FALSE : TRUE;
-    depthStencilDesc.DepthWriteMask = outputMergerDesc.depth.write ? D3D12_DEPTH_WRITE_MASK_ALL : D3D12_DEPTH_WRITE_MASK_ZERO;
-    depthStencilDesc.DepthFunc = GetComparisonFunc(outputMergerDesc.depth.compareFunc);
-    depthStencilDesc.StencilEnable = (outputMergerDesc.stencil.front.compareFunc == CompareFunc::NONE && outputMergerDesc.stencil.back.compareFunc == CompareFunc::NONE) ? FALSE : TRUE;
-    depthStencilDesc.StencilReadMask = (UINT8)outputMergerDesc.stencil.compareMask;
-    depthStencilDesc.StencilWriteMask = (UINT8)outputMergerDesc.stencil.writeMask;
-    depthStencilDesc.FrontFace.StencilFailOp = GetStencilOp(outputMergerDesc.stencil.front.fail);
-    depthStencilDesc.FrontFace.StencilDepthFailOp = GetStencilOp(outputMergerDesc.stencil.front.depthFail);
-    depthStencilDesc.FrontFace.StencilPassOp = GetStencilOp(outputMergerDesc.stencil.front.pass);
-    depthStencilDesc.FrontFace.StencilFunc = GetComparisonFunc(outputMergerDesc.stencil.front.compareFunc);
-    depthStencilDesc.BackFace.StencilFailOp = GetStencilOp(outputMergerDesc.stencil.back.fail);
-    depthStencilDesc.BackFace.StencilDepthFailOp = GetStencilOp(outputMergerDesc.stencil.back.depthFail);
-    depthStencilDesc.BackFace.StencilPassOp = GetStencilOp(outputMergerDesc.stencil.back.pass);
-    depthStencilDesc.BackFace.StencilFunc = GetComparisonFunc(outputMergerDesc.stencil.back.compareFunc);
+    depthStencilDesc->DepthEnable = outputMergerDesc.depth.compareFunc == CompareFunc::NONE ? FALSE : TRUE;
+    depthStencilDesc->DepthWriteMask = outputMergerDesc.depth.write ? D3D12_DEPTH_WRITE_MASK_ALL : D3D12_DEPTH_WRITE_MASK_ZERO;
+    depthStencilDesc->DepthFunc = GetComparisonFunc(outputMergerDesc.depth.compareFunc);
+    depthStencilDesc->StencilEnable = (outputMergerDesc.stencil.front.compareFunc == CompareFunc::NONE && outputMergerDesc.stencil.back.compareFunc == CompareFunc::NONE) ? FALSE : TRUE;
+    depthStencilDesc->StencilReadMask = (UINT8)outputMergerDesc.stencil.compareMask;
+    depthStencilDesc->StencilWriteMask = (UINT8)outputMergerDesc.stencil.writeMask;
+    depthStencilDesc->FrontFace.StencilFailOp = GetStencilOp(outputMergerDesc.stencil.front.fail);
+    depthStencilDesc->FrontFace.StencilDepthFailOp = GetStencilOp(outputMergerDesc.stencil.front.depthFail);
+    depthStencilDesc->FrontFace.StencilPassOp = GetStencilOp(outputMergerDesc.stencil.front.pass);
+    depthStencilDesc->FrontFace.StencilFunc = GetComparisonFunc(outputMergerDesc.stencil.front.compareFunc);
+    depthStencilDesc->BackFace.StencilFailOp = GetStencilOp(outputMergerDesc.stencil.back.fail);
+    depthStencilDesc->BackFace.StencilDepthFailOp = GetStencilOp(outputMergerDesc.stencil.back.depthFail);
+    depthStencilDesc->BackFace.StencilPassOp = GetStencilOp(outputMergerDesc.stencil.back.pass);
+    depthStencilDesc->BackFace.StencilFunc = GetComparisonFunc(outputMergerDesc.stencil.back.compareFunc);
 }
 
 void PipelineD3D12::FillBlendState(D3D12_BLEND_DESC& blendDesc, const GraphicsPipelineDesc& graphicsPipelineDesc)

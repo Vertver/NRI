@@ -2,15 +2,32 @@
 
 [![Status](https://github.com/NVIDIAGameWorks/NRI/actions/workflows/build.yml/badge.svg)](https://github.com/NVIDIAGameWorks/NRI/actions/workflows/build.yml)
 
-*NRI* is a low-level abstract render interface which currently supports three backends: D3D11, D3D12 and Vulkan. *NRI* has been designed to support all (at least major) low level features of D3D12 and Vulkan APIs, but at the same time to simplify usage and reduce the amount of code needed (especially compared with Vulkan). *NRI* is written in *C++*, but supports both *C++* and *C* interfaces.
+*NRI* is a low-level abstract render interface which currently supports three backends: D3D11, D3D12 and Vulkan (VK). *NRI* has been designed to support all (at least major) low level features of D3D12 and VK APIs, but at the same time to simplify usage and reduce the amount of code needed (especially compared with VK). *NRI* is written in *C++*, but supports both *C++* and *C* interfaces.
 
- Key features:
+Goals:
+- generalization of D3D12 ([spec](https://microsoft.github.io/DirectX-Specs/)) and VK ([spec](https://registry.khronos.org/vulkan/specs/1.3-extensions/html/vkspec.html)) GAPIs
+- providing access to low-level features of modern GAPIs
+- low overhead
+- explicitness
+- D3D11 ([spec](https://microsoft.github.io/DirectX-Specs/d3d/archive/D3D11_3_FunctionalSpec.htm)) support (as much as possible)
+
+Non-goals:
+- high level RHI
+- exposing entities not existing in GAPIs
+- D3D11-like abstraction level
+- hidden management of any kind
+
+Key features:
  - *C++* and *C* compatible interfaces
- - common denominator for D3D11, D3D12 and Vulkan APIs
+ - generalized common denominator for D3D12, VK and D3D11 GAPIs
  - low overhead
  - ray tracing support
- - API-provided and/or integrated validation layer
- - default D3D11 behavior is changed to match D3D12/VK where applicable using *NVAPI* or *AMD AGS* libraries
+ - mesh shaders support
+ - D3D12 Ultimate features support, including enhanced barriers
+ - VK [printf](https://github.com/KhronosGroup/Vulkan-ValidationLayers/blob/main/docs/debug_printf.md) support
+ - validation layers (GAPI- and NRI- provided)
+ - default D3D11 behavior is changed to match D3D12/VK using *NVAPI* or *AMD AGS* libraries, where applicable
+ - supporting as much as possible VK-enabled platforms: Windows, Linux, MacOS, Android
 
  *NRI* is used in:
  - [*NRI samples*](https://github.com/NVIDIAGameWorks/NRISamples)
@@ -37,18 +54,18 @@ Notes:
 ## CMAKE OPTIONS
 
 - `NRI_STATIC_LIBRARY` - build NRI as a static library (`off` by default)
-- `NRI_BACKEND_VK` - enable VULKAN backend (`on` by default)
-- `NRI_BACKEND_D3D11` - enable D3D11 backend (`on` by default on Windows)
-- `NRI_BACKEND_D3D12` - enable D3D12 backend (`on` by default on Windows)
+- `NRI_ENABLE_VK_SUPPORT` - enable VULKAN backend (`on` by default)
+- `NRI_ENABLE_D3D11_SUPPORT` - enable D3D11 backend (`on` by default on Windows)
+- `NRI_ENABLE_D3D12_SUPPORT` - enable D3D12 backend (`on` by default on Windows)
 
-Vulkan only:
-- `NRI_ENABLE_XLIB_SUPPORT` - disable *Xlib* support (`on` by default)
-- `NRI_ENABLE_WAYLAND_SUPPORT` - disable *Wayland* support (`on` by default)
+VK only:
+- `NRI_ENABLE_XLIB_SUPPORT` - enable *Xlib* support (`on` by default)
+- `NRI_ENABLE_WAYLAND_SUPPORT` - enable *Wayland* support (`on` by default)
 
 D3D12 only:
 - `NRI_ENABLE_AGILITY_SDK_SUPPORT` - enable Agility SDK (`off` by default)
 - `NRI_AGILITY_SDK_PATH` - path to a directory containing Agility SDK: contents of `.nupkg/build/native/` (`C:/AgilitySDK` by default)
-- `NRI_AGILITY_SDK_VERSION` - Agility SDK version (`711` by default, can be newer)
+- `NRI_AGILITY_SDK_VERSION` - Agility SDK version (`711` or newer)
 - `NRI_AGILITY_SDK_DIR` - directory where Agility SDK binaries will be copied to relative to `CMAKE_RUNTIME_OUTPUT_DIRECTORY` (`AgilitySDK` by default)
 
 ## AGILITY SDK

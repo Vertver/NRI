@@ -21,8 +21,8 @@ struct QueryPoolD3D11
     { return m_Device; }
 
     Result Create(const QueryPoolDesc& queryPoolDesc);
-    void BeginQuery(const VersionedContext& deferredContext, uint32_t offset);
-    void EndQuery(const VersionedContext& deferredContext, uint32_t offset);
+    void BeginQuery(ID3D11DeviceContextBest* deferredContext, uint32_t offset);
+    void EndQuery(ID3D11DeviceContextBest* deferredContext, uint32_t offset);
     void GetData(uint8_t* dstMemory, uint32_t offset, uint32_t num) const;
 
     //================================================================================================================
@@ -30,7 +30,9 @@ struct QueryPoolD3D11
     //================================================================================================================
 
     void SetDebugName(const char* name);
-    uint32_t GetQuerySize() const;
+
+    inline uint32_t GetQuerySize() const
+    { return m_Type == QueryType::PIPELINE_STATISTICS ? sizeof(D3D11_QUERY_DATA_PIPELINE_STATISTICS) : sizeof(uint64_t); }
 
 private:
     DeviceD3D11& m_Device;

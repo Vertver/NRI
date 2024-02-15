@@ -20,7 +20,7 @@ Result HelperDataUpload::UploadData(const TextureUploadDesc* textureUploadDescs,
 
     for (uint32_t i = 0; i < textureUploadDescNum; i++)
     {
-        if (textureUploadDescs[i].subresources == nullptr)
+        if (!textureUploadDescs[i].subresources)
             continue;
 
         const TextureSubresourceUploadDesc& subresource = textureUploadDescs[i].subresources[0];
@@ -105,19 +105,33 @@ void HelperDataUpload::Destroy()
 
 Result HelperDataUpload::UploadTextures(const TextureUploadDesc* textureUploadDescs, uint32_t textureDataDescNum)
 {
-    Result result = DoTransition<true>(textureUploadDescs, textureDataDescNum);
-    if (result != Result::SUCCESS)
-        return result;
+    if (!textureDataDescNum)
+        return Result::SUCCESS;
 
+    bool firstTime = true;
     uint32_t i = 0;
     Dim_t arrayOffset = 0;
     Mip_t mipOffset = 0;
+    Result result;
 
     while (i < textureDataDescNum)
     {
+        if (!firstTime)
+        {
+            result = EndCommandBuffersAndSubmit();
+            if (result != Result::SUCCESS)
+                return result;
+        }
+        
         result = BeginCommandBuffers();
         if (result != Result::SUCCESS)
             return result;
+
+        if (firstTime)
+        {
+            DoTransition<true>(textureUploadDescs, textureDataDescNum);
+            firstTime = false;
+        }
 
         m_UploadBufferOffset = 0;
         bool isCapacityInsufficient = false;
@@ -127,29 +141,41 @@ Result HelperDataUpload::UploadTextures(const TextureUploadDesc* textureUploadDe
 
         if (isCapacityInsufficient)
             return Result::OUT_OF_MEMORY;
-
-        result = EndCommandBuffersAndSubmit();
-        if (result != Result::SUCCESS)
-            return result;
     }
 
-    return DoTransition<false>(textureUploadDescs, textureDataDescNum);
+    DoTransition<false>(textureUploadDescs, textureDataDescNum);
+
+    return EndCommandBuffersAndSubmit();
 }
 
 Result HelperDataUpload::UploadBuffers(const BufferUploadDesc* bufferUploadDescs, uint32_t bufferUploadDescNum)
 {
-    Result result = DoTransition<true>(bufferUploadDescs, bufferUploadDescNum);
-    if (result != Result::SUCCESS)
-        return result;
+    if (!bufferUploadDescNum)
+        return Result::SUCCESS;
 
+    bool firstTime = true;
     uint32_t i = 0;
     uint64_t bufferContentOffset = 0;
+    Result result;
 
     while (i < bufferUploadDescNum)
     {
+        if (!firstTime)
+        {
+            result = EndCommandBuffersAndSubmit();
+            if (result != Result::SUCCESS)
+                return result;
+        }
+        
         result = BeginCommandBuffers();
         if (result != Result::SUCCESS)
             return result;
+
+        if (firstTime)
+        {
+            DoTransition<true>(bufferUploadDescs, bufferUploadDescNum);
+            firstTime = false;
+        }
 
         m_UploadBufferOffset = 0;
         m_MappedMemory = (uint8_t*)NRI.MapBuffer(*m_UploadBuffer, 0, m_UploadBufferSize);
@@ -158,13 +184,11 @@ Result HelperDataUpload::UploadBuffers(const BufferUploadDesc* bufferUploadDescs
             ;
 
         NRI.UnmapBuffer(*m_UploadBuffer);
-
-        result = EndCommandBuffersAndSubmit();
-        if (result != Result::SUCCESS)
-            return result;
     }
 
-    return DoTransition<false>(bufferUploadDescs, bufferUploadDescNum);
+    DoTransition<false>(bufferUploadDescs, bufferUploadDescNum);
+
+    return EndCommandBuffersAndSubmit();
 }
 
 Result HelperDataUpload::BeginCommandBuffers()
@@ -213,12 +237,13 @@ bool HelperDataUpload::CopyTextureContent(const TextureUploadDesc& textureUpload
         return true;
 
     const DeviceDesc& deviceDesc = NRI.GetDeviceDesc(m_Device);
+    const TextureDesc& textureDesc = NRI.GetTextureDesc(*textureUploadDesc.texture);
 
-    for (; arrayOffset < textureUploadDesc.arraySize; arrayOffset++)
+    for (; arrayOffset < textureDesc.arraySize; arrayOffset++)
     {
-        for (; mipOffset < textureUploadDesc.mipNum; mipOffset++)
+        for (; mipOffset < textureDesc.mipNum; mipOffset++)
         {
-            const auto& subresource = textureUploadDesc.subresources[arrayOffset * textureUploadDesc.mipNum + mipOffset];
+            const auto& subresource = textureUploadDesc.subresources[arrayOffset * textureDesc.mipNum + mipOffset];
 
             const uint32_t sliceRowNum = subresource.slicePitch / subresource.rowPitch;
             const uint32_t alignedRowPitch = Align(subresource.rowPitch, deviceDesc.uploadBufferTextureRowAlignment);
@@ -310,15 +335,12 @@ bool HelperDataUpload::CopyBufferContent(const BufferUploadDesc& bufferUploadDes
 }
 
 template<bool isInitialTransition>
-Result HelperDataUpload::DoTransition(const TextureUploadDesc* textureUploadDescs, uint32_t textureDataDescNum)
+void HelperDataUpload::DoTransition(const TextureUploadDesc* textureUploadDescs, uint32_t textureDataDescNum)
 {
-    const Result result = BeginCommandBuffers();
-    if (result != Result::SUCCESS)
-        return result;
-
     constexpr uint32_t TEXTURES_PER_PASS = 256;
-    TextureTransitionBarrierDesc textureTransitions[TEXTURES_PER_PASS];
+    TextureBarrierDesc textureBarriers[TEXTURES_PER_PASS];
 
+    AccessLayoutStage state = {AccessBits::COPY_DESTINATION, Layout::COPY_DESTINATION, StageBits::COPY};
     for (uint32_t i = 0; i < textureDataDescNum;)
     {
         const uint32_t passBegin = i;
@@ -326,44 +348,34 @@ Result HelperDataUpload::DoTransition(const TextureUploadDesc* textureUploadDesc
 
         for ( ; i < passEnd; i++)
         {
-            const TextureUploadDesc& textureDesc = textureUploadDescs[i];
-            TextureTransitionBarrierDesc& transition = textureTransitions[i - passBegin];
+            const TextureUploadDesc& textureUploadDesc = textureUploadDescs[i];
+            const TextureDesc& textureDesc = NRI.GetTextureDesc(*textureUploadDesc.texture);
 
-            transition = {};
-            transition.texture = textureDesc.texture;
-            transition.mipNum = textureDesc.mipNum;
-            transition.arraySize = textureDesc.arraySize;
-
-            if (isInitialTransition)
-                transition.nextState = {AccessBits::COPY_DESTINATION, TextureLayout::COPY_DESTINATION};
-            else
-            {
-                transition.prevState = {AccessBits::COPY_DESTINATION, TextureLayout::COPY_DESTINATION};
-                transition.nextState = textureDesc.nextState;
-            }
+            TextureBarrierDesc& barrier = textureBarriers[i - passBegin];
+            barrier = {};
+            barrier.texture = textureUploadDesc.texture;
+            barrier.mipNum = textureDesc.mipNum;
+            barrier.arraySize = textureDesc.arraySize;
+            barrier.before = isInitialTransition ? textureUploadDesc.before : state;
+            barrier.after = isInitialTransition ? state : textureUploadDesc.after;
         }
 
-        TransitionBarrierDesc transitions = {};
-        transitions.textures = textureTransitions;
-        transitions.textureNum = passEnd - passBegin;
+        BarrierGroupDesc barrierGroup = {};
+        barrierGroup.textures = textureBarriers;
+        barrierGroup.textureNum = uint16_t(passEnd - passBegin);
 
         for (uint32_t j = 0; j < m_CommandBuffers.size(); j++)
-            NRI.CmdPipelineBarrier(*m_CommandBuffers[j], &transitions, nullptr, BarrierDependency::COPY_STAGE);
+            NRI.CmdBarrier(*m_CommandBuffers[j], barrierGroup);
     }
-
-    return EndCommandBuffersAndSubmit();
 }
 
 template<bool isInitialTransition>
-Result HelperDataUpload::DoTransition(const BufferUploadDesc* bufferUploadDescs, uint32_t bufferUploadDescNum)
+void HelperDataUpload::DoTransition(const BufferUploadDesc* bufferUploadDescs, uint32_t bufferUploadDescNum)
 {
-    const Result result = BeginCommandBuffers();
-    if (result != Result::SUCCESS)
-        return result;
-
     constexpr uint32_t BUFFERS_PER_PASS = 256;
-    BufferTransitionBarrierDesc bufferTransitions[BUFFERS_PER_PASS];
+    BufferBarrierDesc bufferBarriers[BUFFERS_PER_PASS];
 
+    AccessStage state = {AccessBits::COPY_DESTINATION, StageBits::COPY};
     for (uint32_t i = 0; i < bufferUploadDescNum;)
     {
         const uint32_t passBegin = i;
@@ -372,30 +384,19 @@ Result HelperDataUpload::DoTransition(const BufferUploadDesc* bufferUploadDescs,
         for ( ; i < passEnd; i++)
         {
             const BufferUploadDesc& bufferUploadDesc = bufferUploadDescs[i];
-            BufferTransitionBarrierDesc& bufferTransition = bufferTransitions[i - passBegin];
 
-            bufferTransition = {};
-            bufferTransition.buffer = bufferUploadDesc.buffer;
-
-            if (isInitialTransition)
-            {
-                bufferTransition.prevAccess = bufferUploadDesc.prevAccess;
-                bufferTransition.nextAccess = AccessBits::COPY_DESTINATION;
-            }
-            else
-            {
-                bufferTransition.prevAccess = AccessBits::COPY_DESTINATION;
-                bufferTransition.nextAccess = bufferUploadDesc.nextAccess;
-            }
+            BufferBarrierDesc& barrier = bufferBarriers[i - passBegin];
+            barrier = {};
+            barrier.buffer = bufferUploadDesc.buffer;
+            barrier.before = isInitialTransition ? bufferUploadDesc.before : state;
+            barrier.after = isInitialTransition ? state : bufferUploadDesc.after;
         }
 
-        TransitionBarrierDesc transitions = {};
-        transitions.buffers = bufferTransitions;
-        transitions.bufferNum = passEnd - passBegin;
+        BarrierGroupDesc barrierGroup = {};
+        barrierGroup.buffers = bufferBarriers;
+        barrierGroup.bufferNum = uint16_t(passEnd - passBegin);
 
         for (uint32_t j = 0; j < m_CommandBuffers.size(); j++)
-            NRI.CmdPipelineBarrier(*m_CommandBuffers[j], &transitions, nullptr, BarrierDependency::COPY_STAGE);
+            NRI.CmdBarrier(*m_CommandBuffers[j], barrierGroup);
     }
-
-    return EndCommandBuffersAndSubmit();
 }

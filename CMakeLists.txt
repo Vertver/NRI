@@ -4,24 +4,19 @@ cmake_minimum_required (VERSION 3.15)
 option (NRI_STATIC_LIBRARY "Build static library" OFF)
 
 # Options: backends
-option (NRI_BACKEND_VK "Enable VULKAN backend" ON)
-option (NRI_BACKEND_D3D11 "Enable D3D11 backend" ON)
-option (NRI_BACKEND_D3D12 "Enable D3D12 backend" ON)
+option (NRI_ENABLE_VK_SUPPORT "Enable VULKAN backend" ON)
+option (NRI_ENABLE_D3D11_SUPPORT "Enable D3D11 backend" ON)
+option (NRI_ENABLE_D3D12_SUPPORT "Enable D3D12 backend" ON)
 
 # Options: VK specific
-option (NRI_ENABLE_XLIB_SUPPORT "Disable 'xlib' support" ON)
-option (NRI_ENABLE_WAYLAND_SUPPORT "Disable 'wayland' support" ON)
+option (NRI_ENABLE_XLIB_SUPPORT "Enable 'xlib' support" ON)
+option (NRI_ENABLE_WAYLAND_SUPPORT "Enable 'wayland' support" ON)
 
 # Options: D3D12 specific
 option (NRI_ENABLE_AGILITY_SDK_SUPPORT "Enable Agility SDK suupport to unlock access to recent D3D12 features" OFF)
 set (NRI_AGILITY_SDK_PATH "C:/AgilitySDK" CACHE STRING "Path to a directory containing Agility SDK (contents of '.nupkg/build/native/')")
 set (NRI_AGILITY_SDK_VERSION "711" CACHE STRING "Agility SDK version")
 set (NRI_AGILITY_SDK_DIR "AgilitySDK" CACHE STRING "Directory where Agility SDK binaries will be copied to relative to 'CMAKE_RUNTIME_OUTPUT_DIRECTORY'")
-
-# Options: StreamLine SDK
-option (NRI_ENABLE_STREAMLINE_SUPPORT "Enable streamline wrapper for streamline integration (requires NRI_STREAMLINE_SDK_PATH to point to a valid streamline package)" OFF)
-option (NRI_USE_DEVELOPMENT_STREAMLINE_LIBRARY "Make the project use development streamline libraries instead of regular ones" OFF)
-set (NRI_STREAMLINE_SDK_PATH "" CACHE STRING "Path to a directory containing StreamLine SDK package (must not include the name of the library 'sl.interposer.lib', must not be empty when NRI_ENABLE_STREAMLINE_SUPPORT is on)")
 
 # Is submodule?
 if (${CMAKE_SOURCE_DIR} STREQUAL ${CMAKE_CURRENT_SOURCE_DIR})
@@ -124,12 +119,10 @@ endif ()
 set (COMPILE_DEFINITIONS WIN32_LEAN_AND_MEAN NOMINMAX _CRT_SECURE_NO_WARNINGS)
 
 # D3D11
-if (WIN32 AND NRI_BACKEND_D3D11)
+if (WIN32 AND NRI_ENABLE_D3D11_SUPPORT)
     message ("NRI adding backend: D3D11")
     set (COMPILE_DEFINITIONS ${COMPILE_DEFINITIONS} NRI_USE_D3D11=1)
-    if (NOT NRI_ENABLE_STREAMLINE_SUPPORT)
-        set (INPUT_LIBS_D3D11 ${INPUT_LIB_D3D11} ${INPUT_LIB_DXGI})
-    endif ()
+    set (INPUT_LIBS_D3D11 ${INPUT_LIB_D3D11} ${INPUT_LIB_DXGI})
 
     find_library (INPUT_LIB_NVAPI NAMES nvapi64 nvapi PATHS "External/nvapi/${NVAPI_BIN_ARCHITECTURE}" REQUIRED)
     find_library (INPUT_LIB_AGS NAMES amd_ags_${BIN_ARCHITECTURE} PATHS "External/amdags/ags_lib/lib" REQUIRED)
@@ -149,12 +142,10 @@ if (WIN32 AND NRI_BACKEND_D3D11)
 endif ()
 
 # D3D12
-if (WIN32 AND NRI_BACKEND_D3D12)
+if (WIN32 AND NRI_ENABLE_D3D12_SUPPORT)
     message ("NRI adding backend: D3D12")
     set (COMPILE_DEFINITIONS ${COMPILE_DEFINITIONS} NRI_USE_D3D12=1)
-    if (NOT NRI_ENABLE_STREAMLINE_SUPPORT)
-        set (INPUT_LIBS_D3D12 ${INPUT_LIB_D3D12} ${INPUT_LIB_DXGI})
-    endif ()
+    set (INPUT_LIBS_D3D12 ${INPUT_LIB_D3D12} ${INPUT_LIB_DXGI})
 
     file (GLOB D3D12_SOURCE "Source/D3D12/*.cpp" "Source/D3D12/*.h" "Source/D3D12/*.hpp")
     source_group ("" FILES ${D3D12_SOURCE})
@@ -189,7 +180,7 @@ if (WIN32 AND NRI_BACKEND_D3D12)
 endif ()
 
 # VK
-if (NRI_BACKEND_VK)
+if (NRI_ENABLE_VK_SUPPORT)
     message ("NRI adding backend: VK")
     set (COMPILE_DEFINITIONS ${COMPILE_DEFINITIONS} NRI_USE_VULKAN=1)
 
@@ -253,15 +244,9 @@ file (GLOB NRI_HEADERS "Include/*.h" "Include/*.hpp")
 source_group ("Include" FILES ${NRI_HEADERS})
 
 file (GLOB NRI_EXTENSIONS "Include/Extensions/*.h" "Include/Extensions/*.hpp")
-if (NRI_ENABLE_STREAMLINE_SUPPORT)
-    file(GLOB NRI_EXTENSIONS ${NRI_EXTENSIONS} "Include/Extensions/Optional/NRIStreamlineWrapper.h" "Include/Extensions/Optional/NRIGfxApiWrapper.h")
-endif()
 source_group ("Include/Extensions" FILES ${NRI_EXTENSIONS})
 
 file (GLOB NRI_SOURCE "Source/Creation/*.cpp" "Source/Creation/*.h")
-if (NRI_ENABLE_STREAMLINE_SUPPORT)
-    file (GLOB NRI_SOURCE ${NRI_SOURCE} "Source/Streamline/*.cpp")
-endif ()
 source_group ("Sources" FILES ${NRI_SOURCE})
 
 file (GLOB NRI_RESOURCES "Resources/*")
@@ -314,13 +299,13 @@ else ()
     target_link_libraries (${PROJECT_NAME} PRIVATE ${CMAKE_DL_LIBS})
 endif ()
 
-if (WIN32 AND NRI_BACKEND_D3D11)
+if (WIN32 AND NRI_ENABLE_D3D11_SUPPORT)
     target_link_libraries (${PROJECT_NAME} PRIVATE NRI_D3D11)
 endif ()
-if (WIN32 AND NRI_BACKEND_D3D12)
+if (WIN32 AND NRI_ENABLE_D3D12_SUPPORT)
     target_link_libraries (${PROJECT_NAME} PRIVATE NRI_D3D12)
 endif ()
-if (NRI_BACKEND_VK)
+if (NRI_ENABLE_VK_SUPPORT)
     target_link_libraries (${PROJECT_NAME} PRIVATE NRI_VK)
 endif ()
 

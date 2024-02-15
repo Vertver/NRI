@@ -26,7 +26,6 @@ typedef nri::MemoryAllocatorInterface MemoryAllocatorInterface;
 #include "HelperWaitIdle.h"
 #include "HelperDeviceMemoryAllocator.h"
 #include "HelperDataUpload.h"
-#include "HelperResourceStateChange.h"
 
 #ifdef _WIN32
     #include <dxgi1_6.h>
@@ -71,14 +70,7 @@ constexpr uint32_t GetNodeMask(uint32_t mask)
 #define REPORT_ERROR(deviceBase, format, ...) \
     (deviceBase)->ReportMessage(nri::Message::TYPE_ERROR, __FILE__, __LINE__, format, ##__VA_ARGS__)
 
-#if _DEBUG
-    #define CHECK(deviceBase, condition, format, ...) \
-        if ( !(condition) ) \
-            (deviceBase)->ReportMessage(nri::Message::TYPE_ERROR, __FILE__, __LINE__, format, ##__VA_ARGS__)
-#else
-    #define CHECK(deviceBase, condition, format, ...) \
-        ((void)sizeof((void)(condition), 0))
-#endif
+#define CHECK(condition, message) assert(condition && message)
 
 #define SET_D3D_DEBUG_OBJECT_NAME(obj, name) \
     if (obj) \
