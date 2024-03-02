@@ -264,7 +264,31 @@ else ()
     endif ()
 endif ()
 
-target_include_directories (${PROJECT_NAME} PRIVATE "Include" "Source/Shared" "External/vulkan/include")
+if (NRI_ENABLE_STREAMLINE_SUPPORT)
+    set (SL_INCLUDE_DIRECTORY "${NRI_STREAMLINE_SDK_PATH}/include/")
+    set(SL_INTERPOSER_LINK_PATH "${NRI_STREAMLINE_SDK_PATH}/lib/x64/sl.interposer.lib")
+    file (TO_CMAKE_PATH "${NRI_STREAMLINE_SDK_PATH}" NRI_STREAMLINE_SDK_CMAKE_PATH)
+    if (NRI_USE_DEVELOPMENT_STREAMLINE_LIBRARY)
+        set(SL_PLUGINS_DIRECTORY "${NRI_STREAMLINE_SDK_CMAKE_PATH}/bin/x64/development")
+    else()
+        set(SL_PLUGINS_DIRECTORY "${NRI_STREAMLINE_SDK_CMAKE_PATH}/bin/x64")
+    endif()
+
+    target_include_directories(${PROJECT_NAME} PUBLIC ${SL_INCLUDE_DIRECTORY})
+    target_link_libraries (${PROJECT_NAME} PRIVATE ${SL_INTERPOSER_LINK_PATH})
+    target_compile_definitions (${PROJECT_NAME} PRIVATE SL_PLUGINS_DIRECTORY=${SL_PLUGINS_DIRECTORY} NRI_GFX_API_WRAPPER_LIBRARY)
+
+    file (TO_NATIVE_PATH "${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/$<CONFIG>" BIN_OUTPUT_PATH_NATIVE)
+    file (TO_NATIVE_PATH "${SL_PLUGINS_DIRECTORY}/sl.interposer.dll" SL_INTERPOSER_CMAKE_PATH)
+
+    add_custom_command (TARGET ${PROJECT_NAME} POST_BUILD
+        COMMAND ${CMAKE_COMMAND} -E copy ${SL_INTERPOSER_CMAKE_PATH} ${BIN_OUTPUT_PATH_NATIVE}
+        COMMENT "Copying '${SL_INTERPOSER_CMAKE_PATH}' to '${BIN_OUTPUT_PATH_NATIVE}'"
+        VERBATIM
+    )
+endif ()
+
+target_include_directories (${PROJECT_NAME} PUBLIC "Include" "Source/Shared" "External/vulkan/include")
 target_compile_definitions (${PROJECT_NAME} PRIVATE ${COMPILE_DEFINITIONS})
 target_compile_options (${PROJECT_NAME} PRIVATE ${COMPILE_OPTIONS})
 
