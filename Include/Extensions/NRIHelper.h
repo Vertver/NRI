@@ -24,7 +24,6 @@ NRI_STRUCT(TextureUploadDesc)
 {
     const NRI_NAME(TextureSubresourceUploadDesc)* subresources; // must include ALL subresources = arraySize * mipNum
     NRI_NAME(Texture)* texture;
-    NRI_NAME(AccessLayoutStage) before;
     NRI_NAME(AccessLayoutStage) after;
 };
 
@@ -34,7 +33,6 @@ NRI_STRUCT(BufferUploadDesc)
     uint64_t dataSize;
     NRI_NAME(Buffer)* buffer;
     uint64_t bufferOffset;
-    NRI_NAME(AccessStage) before;
     NRI_NAME(AccessStage) after;
 };
 
@@ -52,7 +50,7 @@ NRI_STRUCT(HelperInterface)
     uint32_t (NRI_CALL *CalculateAllocationNumber)(NRI_NAME_REF(Device) device, const NRI_NAME_REF(ResourceGroupDesc) resourceGroupDesc);
     NRI_NAME(Result) (NRI_CALL *AllocateAndBindMemory)(NRI_NAME_REF(Device) device, const NRI_NAME_REF(ResourceGroupDesc) resourceGroupDesc, NRI_NAME(Memory)** allocations);
     NRI_NAME(Result) (NRI_CALL *UploadData)(NRI_NAME_REF(CommandQueue) commandQueue, const NRI_NAME(TextureUploadDesc)* textureUploadDescs, uint32_t textureUploadDescNum,
-        const NRI_NAME(BufferUploadDesc)* bufferUploadDescs, uint32_t bufferUploadDescNum); // TODO: add 'nodeMask' to explicitly define which GPUs data should be uploaded on
+        const NRI_NAME(BufferUploadDesc)* bufferUploadDescs, uint32_t bufferUploadDescNum);
     NRI_NAME(Result) (NRI_CALL *WaitForIdle)(NRI_NAME_REF(CommandQueue) commandQueue);
 };
 

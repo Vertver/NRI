@@ -1,9 +1,8 @@
 // © 2021 NVIDIA Corporation
 
 #include "SharedExternal.h"
-#include "DeviceBase.h"
-#include "DeviceVal.h"
 #include "SharedVal.h"
+
 #include "PipelineLayoutVal.h"
 
 using namespace nri;
@@ -38,8 +37,7 @@ PipelineLayoutVal::PipelineLayoutVal(DeviceVal& device, PipelineLayout* pipeline
         m_DescriptorRangeDescs.insert(m_DescriptorRangeDescs.end(), descriptorSetDesc.ranges, descriptorSetDesc.ranges + descriptorSetDesc.rangeNum);
 
         m_DynamicConstantBufferDescs.insert(
-            m_DynamicConstantBufferDescs.end(), descriptorSetDesc.dynamicConstantBuffers, descriptorSetDesc.dynamicConstantBuffers + descriptorSetDesc.dynamicConstantBufferNum
-        );
+            m_DynamicConstantBufferDescs.end(), descriptorSetDesc.dynamicConstantBuffers, descriptorSetDesc.dynamicConstantBuffers + descriptorSetDesc.dynamicConstantBufferNum);
     }
 
     m_PipelineLayoutDesc = pipelineLayoutDesc;

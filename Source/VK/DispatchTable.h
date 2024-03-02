@@ -4,8 +4,7 @@
 
 #define VULKAN_FUNCTION(name) PFN_vk##name name
 
-struct DispatchTable
-{
+struct DispatchTable {
     VULKAN_FUNCTION(GetInstanceProcAddr);
     VULKAN_FUNCTION(CreateInstance);
     VULKAN_FUNCTION(EnumerateInstanceExtensionProperties);
@@ -20,9 +19,7 @@ struct DispatchTable
     VULKAN_FUNCTION(CreateDevice);
     VULKAN_FUNCTION(GetDeviceQueue);
     VULKAN_FUNCTION(EnumeratePhysicalDeviceGroups);
-    VULKAN_FUNCTION(GetPhysicalDeviceProperties);
     VULKAN_FUNCTION(GetPhysicalDeviceProperties2);
-    VULKAN_FUNCTION(GetPhysicalDeviceFeatures);
     VULKAN_FUNCTION(GetPhysicalDeviceFeatures2);
     VULKAN_FUNCTION(GetPhysicalDeviceQueueFamilyProperties);
     VULKAN_FUNCTION(EnumerateDeviceExtensionProperties);
@@ -106,10 +103,12 @@ struct DispatchTable
     VULKAN_FUNCTION(UpdateDescriptorSets);
 
     VULKAN_FUNCTION(BeginCommandBuffer);
-    VULKAN_FUNCTION(CmdSetDepthBounds);
     VULKAN_FUNCTION(CmdSetViewport);
     VULKAN_FUNCTION(CmdSetScissor);
+    VULKAN_FUNCTION(CmdSetDepthBounds);
     VULKAN_FUNCTION(CmdSetStencilReference);
+    VULKAN_FUNCTION(CmdSetSampleLocationsEXT);
+    VULKAN_FUNCTION(CmdSetBlendConstants);
     VULKAN_FUNCTION(CmdClearAttachments);
     VULKAN_FUNCTION(CmdClearColorImage);
     VULKAN_FUNCTION(CmdBeginRendering);
@@ -154,9 +153,11 @@ struct DispatchTable
     VULKAN_FUNCTION(CmdCopyAccelerationStructureKHR);
     VULKAN_FUNCTION(CmdWriteAccelerationStructuresPropertiesKHR);
     VULKAN_FUNCTION(CmdTraceRaysKHR);
+    VULKAN_FUNCTION(CmdTraceRaysIndirect2KHR);
     VULKAN_FUNCTION(GetBufferDeviceAddress);
 
     VULKAN_FUNCTION(CmdDrawMeshTasksEXT);
+    VULKAN_FUNCTION(CmdDrawMeshTasksIndirectEXT);
 };
 
 #undef VULKAN_FUNCTION

@@ -2,8 +2,8 @@
 
 #include "SharedExternal.h"
 #include "SharedVal.h"
-#include "DescriptorSetVal.h"
 
+#include "DescriptorSetVal.h"
 #include "DescriptorVal.h"
 
 using namespace nri;
@@ -13,22 +13,18 @@ void DescriptorSetVal::SetDebugName(const char* name) {
     GetCoreInterface().SetDescriptorSetDebugName(*GetImpl(), name);
 }
 
-void DescriptorSetVal::UpdateDescriptorRanges(uint32_t nodeMask, uint32_t rangeOffset, uint32_t rangeNum, const DescriptorRangeUpdateDesc* rangeUpdateDescs) {
+void DescriptorSetVal::UpdateDescriptorRanges(uint32_t rangeOffset, uint32_t rangeNum, const DescriptorRangeUpdateDesc* rangeUpdateDescs) {
     if (rangeNum == 0)
         return;
 
     RETURN_ON_FAILURE(&m_Device, rangeUpdateDescs != nullptr, ReturnVoid(), "UpdateDescriptorRanges: 'rangeUpdateDescs' is NULL");
 
-    RETURN_ON_FAILURE(
-        &m_Device, rangeOffset < GetDesc().rangeNum, ReturnVoid(), "UpdateDescriptorRanges: 'rangeOffset' is out of bounds. (rangeOffset=%u, rangeNum=%u)", rangeOffset,
-        GetDesc().rangeNum
-    );
+    RETURN_ON_FAILURE(&m_Device, rangeOffset < GetDesc().rangeNum, ReturnVoid(), "UpdateDescriptorRanges: 'rangeOffset' is out of bounds. (rangeOffset=%u, rangeNum=%u)",
+        rangeOffset, GetDesc().rangeNum);
 
-    RETURN_ON_FAILURE(
-        &m_Device, rangeOffset + rangeNum <= GetDesc().rangeNum, ReturnVoid(),
+    RETURN_ON_FAILURE(&m_Device, rangeOffset + rangeNum <= GetDesc().rangeNum, ReturnVoid(),
         "UpdateDescriptorRanges: 'rangeOffset' + 'rangeNum' is greater than the number of ranges. (rangeOffset=%u, rangeNum=%u, rangeNum=%u)", rangeOffset, rangeNum,
-        GetDesc().rangeNum
-    );
+        GetDesc().rangeNum);
 
     DescriptorRangeUpdateDesc* rangeUpdateDescsImpl = STACK_ALLOC(DescriptorRangeUpdateDesc, rangeNum);
     for (uint32_t i = 0; i < rangeNum; i++) {
@@ -38,18 +34,14 @@ void DescriptorSetVal::UpdateDescriptorRanges(uint32_t nodeMask, uint32_t rangeO
         RETURN_ON_FAILURE(&m_Device, updateDesc.descriptorNum != 0, ReturnVoid(), "UpdateDescriptorRanges: 'rangeUpdateDescs[%u].descriptorNum' is 0", i);
         RETURN_ON_FAILURE(&m_Device, updateDesc.descriptors != nullptr, ReturnVoid(), "UpdateDescriptorRanges: 'rangeUpdateDescs[%u].descriptors' is NULL", i);
 
-        RETURN_ON_FAILURE(
-            &m_Device, updateDesc.offsetInRange < rangeDesc.descriptorNum, ReturnVoid(),
+        RETURN_ON_FAILURE(&m_Device, updateDesc.offsetInRange < rangeDesc.descriptorNum, ReturnVoid(),
             "UpdateDescriptorRanges: 'rangeUpdateDescs[%u].offsetInRange' is greater than the number of descriptors (offsetInRange=%u, rangeDescriptorNum=%u, descriptorType=%s)",
-            i, updateDesc.offsetInRange, rangeDesc.descriptorNum, GetDescriptorTypeName(rangeDesc.descriptorType)
-        );
+            i, updateDesc.offsetInRange, rangeDesc.descriptorNum, GetDescriptorTypeName(rangeDesc.descriptorType));
 
-        RETURN_ON_FAILURE(
-            &m_Device, updateDesc.offsetInRange + updateDesc.descriptorNum <= rangeDesc.descriptorNum, ReturnVoid(),
+        RETURN_ON_FAILURE(&m_Device, updateDesc.offsetInRange + updateDesc.descriptorNum <= rangeDesc.descriptorNum, ReturnVoid(),
             "UpdateDescriptorRanges: 'rangeUpdateDescs[%u].offsetInRange' + 'rangeUpdateDescs[%u].descriptorNum' is greater than the number of descriptors (offsetInRange=%u, "
             "descriptorNum=%u, rangeDescriptorNum=%u, descriptorType=%s)",
-            i, i, updateDesc.offsetInRange, updateDesc.descriptorNum, rangeDesc.descriptorNum, GetDescriptorTypeName(rangeDesc.descriptorType)
-        );
+            i, i, updateDesc.offsetInRange, updateDesc.descriptorNum, rangeDesc.descriptorNum, GetDescriptorTypeName(rangeDesc.descriptorType));
 
         DescriptorRangeUpdateDesc& dstDesc = rangeUpdateDescsImpl[i];
 
@@ -64,23 +56,19 @@ void DescriptorSetVal::UpdateDescriptorRanges(uint32_t nodeMask, uint32_t rangeO
         }
     }
 
-    GetCoreInterface().UpdateDescriptorRanges(*GetImpl(), nodeMask, rangeOffset, rangeNum, rangeUpdateDescsImpl);
+    GetCoreInterface().UpdateDescriptorRanges(*GetImpl(), rangeOffset, rangeNum, rangeUpdateDescsImpl);
 }
 
-void DescriptorSetVal::UpdateDynamicConstantBuffers(uint32_t nodeMask, uint32_t baseBuffer, uint32_t bufferNum, const Descriptor* const* descriptors) {
+void DescriptorSetVal::UpdateDynamicConstantBuffers(uint32_t baseBuffer, uint32_t bufferNum, const Descriptor* const* descriptors) {
     if (bufferNum == 0)
         return;
 
-    RETURN_ON_FAILURE(
-        &m_Device, baseBuffer < GetDesc().dynamicConstantBufferNum, ReturnVoid(),
-        "UpdateDynamicConstantBuffers: 'baseBuffer' is invalid. (baseBuffer=%u, dynamicConstantBufferNum=%u)", baseBuffer, GetDesc().dynamicConstantBufferNum
-    );
+    RETURN_ON_FAILURE(&m_Device, baseBuffer < GetDesc().dynamicConstantBufferNum, ReturnVoid(),
+        "UpdateDynamicConstantBuffers: 'baseBuffer' is invalid. (baseBuffer=%u, dynamicConstantBufferNum=%u)", baseBuffer, GetDesc().dynamicConstantBufferNum);
 
-    RETURN_ON_FAILURE(
-        &m_Device, baseBuffer + bufferNum <= GetDesc().dynamicConstantBufferNum, ReturnVoid(),
+    RETURN_ON_FAILURE(&m_Device, baseBuffer + bufferNum <= GetDesc().dynamicConstantBufferNum, ReturnVoid(),
         "UpdateDynamicConstantBuffers: 'baseBuffer' + 'bufferNum' is greater than the number of buffers (baseBuffer=%u, bufferNum=%u, dynamicConstantBufferNum=%u)", baseBuffer,
-        bufferNum, GetDesc().dynamicConstantBufferNum
-    );
+        bufferNum, GetDesc().dynamicConstantBufferNum);
 
     RETURN_ON_FAILURE(&m_Device, descriptors != nullptr, ReturnVoid(), "UpdateDynamicConstantBuffers: 'descriptors' is NULL");
 
@@ -91,7 +79,7 @@ void DescriptorSetVal::UpdateDynamicConstantBuffers(uint32_t nodeMask, uint32_t 
         descriptorsImpl[i] = NRI_GET_IMPL(Descriptor, descriptors[i]);
     }
 
-    GetCoreInterface().UpdateDynamicConstantBuffers(*GetImpl(), nodeMask, baseBuffer, bufferNum, descriptorsImpl);
+    GetCoreInterface().UpdateDynamicConstantBuffers(*GetImpl(), baseBuffer, bufferNum, descriptorsImpl);
 }
 
 void DescriptorSetVal::Copy(const DescriptorSetCopyDesc& descriptorSetCopyDesc) {

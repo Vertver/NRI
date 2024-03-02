@@ -14,14 +14,13 @@ static void NRI_CALL QueueSubmit(CommandQueue& commandQueue, const QueueSubmitDe
 
 #pragma region[  Helper  ]
 
-static Result NRI_CALL UploadData(
-    CommandQueue& commandQueue, const TextureUploadDesc* textureUploadDescs, uint32_t textureUploadDescNum, const BufferUploadDesc* bufferUploadDescs, uint32_t bufferUploadDescNum
-) {
+static Result NRI_CALL UploadData(CommandQueue& commandQueue, const TextureUploadDesc* textureUploadDescs, uint32_t textureUploadDescNum, const BufferUploadDesc* bufferUploadDescs,
+    uint32_t bufferUploadDescNum) {
     return ((CommandQueueVal&)commandQueue).UploadData(textureUploadDescs, textureUploadDescNum, bufferUploadDescs, bufferUploadDescNum);
 }
 
 static Result NRI_CALL WaitForIdle(CommandQueue& commandQueue) {
-    if(!(&commandQueue))
+    if (!(&commandQueue))
         return Result::SUCCESS;
 
     return ((CommandQueueVal&)commandQueue).WaitForIdle();

@@ -1,12 +1,12 @@
 // © 2021 NVIDIA Corporation
 
 #include "SharedExternal.h"
-#include "DeviceBase.h"
-#include "DeviceVal.h"
 #include "SharedVal.h"
-#include "MemoryVal.h"
-#include "DescriptorVal.h"
+
 #include "AccelerationStructureVal.h"
+#include "DescriptorVal.h"
+#include "DeviceVal.h"
+#include "MemoryVal.h"
 
 using namespace nri;
 
@@ -30,21 +30,21 @@ uint64_t AccelerationStructureVal::GetBuildScratchBufferSize() const {
     return m_RayTracingAPI.GetAccelerationStructureBuildScratchBufferSize(*GetImpl());
 }
 
-uint64_t AccelerationStructureVal::GetHandle(uint32_t nodeIndex) const {
+uint64_t AccelerationStructureVal::GetHandle() const {
     RETURN_ON_FAILURE(&m_Device, IsBoundToMemory(), 0, "GetAccelerationStructureHandle: AccelerationStructure is not bound to memory");
 
-    return m_RayTracingAPI.GetAccelerationStructureHandle(*GetImpl(), nodeIndex);
+    return m_RayTracingAPI.GetAccelerationStructureHandle(*GetImpl());
 }
 
-uint64_t AccelerationStructureVal::GetNativeObject(uint32_t nodeIndex) const {
+uint64_t AccelerationStructureVal::GetNativeObject() const {
     RETURN_ON_FAILURE(&m_Device, IsBoundToMemory(), 0, "GetAccelerationStructureNativeObject: AccelerationStructure is not bound to memory");
 
-    return m_RayTracingAPI.GetAccelerationStructureNativeObject(*GetImpl(), nodeIndex);
+    return m_RayTracingAPI.GetAccelerationStructureNativeObject(*GetImpl());
 }
 
-Result AccelerationStructureVal::CreateDescriptor(uint32_t nodeIndex, Descriptor*& descriptor) {
+Result AccelerationStructureVal::CreateDescriptor(Descriptor*& descriptor) {
     Descriptor* descriptorImpl = nullptr;
-    const Result result = m_RayTracingAPI.CreateAccelerationStructureDescriptor(*GetImpl(), nodeIndex, descriptorImpl);
+    const Result result = m_RayTracingAPI.CreateAccelerationStructureDescriptor(*GetImpl(), descriptorImpl);
 
     if (result == Result::SUCCESS) {
         RETURN_ON_FAILURE(&m_Device, descriptorImpl != nullptr, Result::FAILURE, "CreateAccelerationStructureDescriptor: 'impl' is NULL");

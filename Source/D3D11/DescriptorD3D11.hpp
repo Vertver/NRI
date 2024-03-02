@@ -1,20 +1,16 @@
 // © 2021 NVIDIA Corporation
 
-#pragma region [  Core  ]
+#pragma region[  Core  ]
 
-static void NRI_CALL SetDescriptorDebugName(Descriptor& descriptor, const char* name)
-{
+static void NRI_CALL SetDescriptorDebugName(Descriptor& descriptor, const char* name) {
     ((DescriptorD3D11&)descriptor).SetDebugName(name);
 }
 
-static uint64_t NRI_CALL GetDescriptorNativeObject(const Descriptor& descriptor, uint32_t nodeIndex)
-{
-    MaybeUnused(nodeIndex);
-
+static uint64_t NRI_CALL GetDescriptorNativeObject(const Descriptor& descriptor) {
     if (!(&descriptor))
         return 0;
 
-    return uint64_t( (ID3D11View*)((DescriptorD3D11&)descriptor) );
+    return uint64_t((ID3D11View*)((DescriptorD3D11&)descriptor));
 }
 
 #pragma endregion

@@ -30,6 +30,14 @@ NRI_STRUCT(CallbackInterface)
     void* userArg;
 };
 
+NRI_STRUCT(SPIRVBindingOffsets)
+{
+    uint32_t samplerOffset;
+    uint32_t textureOffset;
+    uint32_t constantBufferOffset;
+    uint32_t storageTextureAndBufferOffset;
+};
+
 NRI_STRUCT(VulkanExtensions)
 {
     const char* const* instanceExtensions;
@@ -43,12 +51,11 @@ NRI_STRUCT(DeviceCreationDesc)
     const NRI_NAME(AdapterDesc)* adapterDesc;
     NRI_NAME(CallbackInterface) callbackInterface;
     NRI_NAME(MemoryAllocatorInterface) memoryAllocatorInterface;
-    NRI_NAME(GraphicsAPI) graphicsAPI;
     NRI_NAME(SPIRVBindingOffsets) spirvBindingOffsets;
     NRI_NAME(VulkanExtensions) vulkanExtensions;
+    NRI_NAME(GraphicsAPI) graphicsAPI;
     bool enableNRIValidation;
     bool enableAPIValidation;
-    bool enableMGPU;
     bool enableD3D11CommandBufferEmulation; // force enable, but why?
     bool disableVulkanRayTracing; // to save some CPU memory
 };

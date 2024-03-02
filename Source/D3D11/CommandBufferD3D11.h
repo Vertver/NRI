@@ -2,27 +2,27 @@
 
 #pragma once
 
-namespace nri
-{
+namespace nri {
 
 struct PipelineLayoutD3D11;
 struct PipelineD3D11;
 struct BufferD3D11;
 
-struct CommandBufferD3D11 final : public CommandBufferHelper
-{
+struct CommandBufferD3D11 final : public CommandBufferHelper {
     CommandBufferD3D11(DeviceD3D11& device);
     ~CommandBufferD3D11();
 
-    inline DeviceD3D11& GetDevice() const
-    { return m_Device; }
+    inline DeviceD3D11& GetDevice() const {
+        return m_Device;
+    }
 
     //================================================================================================================
     // CommandBufferHelper
     //================================================================================================================
 
-    inline ID3D11DeviceContext* GetNativeObject() const
-    { return m_DeferredContext; }
+    inline ID3D11DeviceContext* GetNativeObject() const {
+        return m_DeferredContext;
+    }
 
     Result Create(ID3D11DeviceContext* precreatedContext);
     void Submit();
@@ -32,8 +32,7 @@ struct CommandBufferD3D11 final : public CommandBufferHelper
     // NRI
     //================================================================================================================
 
-    inline void SetDebugName(const char* name)
-    {
+    inline void SetDebugName(const char* name) {
         SET_D3D_DEBUG_OBJECT_NAME(m_DeferredContext, name);
         SET_D3D_DEBUG_OBJECT_NAME(m_CommandList, name);
     }
@@ -43,13 +42,15 @@ struct CommandBufferD3D11 final : public CommandBufferHelper
     void SetViewports(const Viewport* viewports, uint32_t viewportNum);
     void SetScissors(const Rect* rects, uint32_t rectNum);
     void SetDepthBounds(float boundsMin, float boundsMax);
-    void SetStencilReference(uint8_t reference);
-    void SetSamplePositions(const SamplePosition* positions, uint32_t positionNum);
+    void SetStencilReference(uint8_t frontRef, uint8_t backRef);
+    void SetSamplePositions(const SamplePosition* positions, Sample_t positionNum, Sample_t sampleNum);
+    void SetBlendConstants(const Color32f& color);
     void ClearAttachments(const ClearDesc* clearDescs, uint32_t clearDescNum, const Rect* rects, uint32_t rectNum);
     void ClearStorageBuffer(const ClearStorageBufferDesc& clearDesc);
     void ClearStorageTexture(const ClearStorageTextureDesc& clearDesc);
     void BeginRendering(const AttachmentsDesc& attachmentsDesc);
-    inline void EndRendering() {}
+    inline void EndRendering() {
+    }
     void SetVertexBuffers(uint32_t baseSlot, uint32_t bufferNum, const Buffer* const* buffers, const uint64_t* offsets);
     void SetIndexBuffer(const Buffer& buffer, uint64_t offset, IndexType indexType);
     void SetPipelineLayout(const PipelineLayout& pipelineLayout);
@@ -57,15 +58,15 @@ struct CommandBufferD3D11 final : public CommandBufferHelper
     void SetDescriptorPool(const DescriptorPool& descriptorPool);
     void SetDescriptorSet(uint32_t setIndexInPipelineLayout, const DescriptorSet& descriptorSet, const uint32_t* dynamicConstantBufferOffsets);
     void SetConstants(uint32_t pushConstantIndex, const void* data, uint32_t size);
-    void Draw(uint32_t vertexNum, uint32_t instanceNum, uint32_t baseVertex, uint32_t baseInstance);
-    void DrawIndexed(uint32_t indexNum, uint32_t instanceNum, uint32_t baseIndex, uint32_t baseVertex, uint32_t baseInstance);
+    void Draw(const DrawDesc& drawDesc);
     void DrawIndirect(const Buffer& buffer, uint64_t offset, uint32_t drawNum, uint32_t stride);
+    void DrawIndexed(const DrawIndexedDesc& drawIndexedDesc);
     void DrawIndexedIndirect(const Buffer& buffer, uint64_t offset, uint32_t drawNum, uint32_t stride);
     void CopyBuffer(Buffer& dstBuffer, uint64_t dstOffset, const Buffer& srcBuffer, uint64_t srcOffset, uint64_t size);
     void CopyTexture(Texture& dstTexture, const TextureRegionDesc* dstRegionDesc, const Texture& srcTexture, const TextureRegionDesc* srcRegionDesc);
     void UploadBufferToTexture(Texture& dstTexture, const TextureRegionDesc& dstRegionDesc, const Buffer& srcBuffer, const TextureDataLayoutDesc& srcDataLayoutDesc);
     void ReadbackTextureToBuffer(Buffer& dstBuffer, TextureDataLayoutDesc& dstDataLayoutDesc, const Texture& srcTexture, const TextureRegionDesc& srcRegionDesc);
-    void Dispatch(uint32_t x, uint32_t y, uint32_t z);
+    void Dispatch(const DispatchDesc& dispatchDesc);
     void DispatchIndirect(const Buffer& buffer, uint64_t offset);
     void Barrier(const BarrierGroupDesc& barrierGroupDesc);
     void BeginQuery(const QueryPool& queryPool, uint32_t offset);
@@ -74,7 +75,7 @@ struct CommandBufferD3D11 final : public CommandBufferHelper
     void BeginAnnotation(const char* name);
     void EndAnnotation();
 
-private:
+  private:
     DeviceD3D11& m_Device;
     ComPtr<ID3D11DeviceContextBest> m_DeferredContext; // can be immediate to redirect data from emulation
     ComPtr<ID3D11CommandList> m_CommandList;
@@ -87,6 +88,7 @@ private:
     const Buffer* m_VertexBuffer = nullptr;
     BindingState m_BindingState = {};
     SamplePositionsState m_SamplePositionsState = {};
+    Color32f m_BlendFactor = {};
     uint64_t m_IndexBufferOffset = 0;
     uint64_t m_VertexBufferOffset = 0;
     uint32_t m_VertexBufferBaseSlot = 0;
@@ -97,4 +99,4 @@ private:
     uint8_t m_Version = 0;
 };
 
-}
+} // namespace nri
