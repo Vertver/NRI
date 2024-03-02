@@ -5,7 +5,7 @@ option (NRI_STATIC_LIBRARY "Build static library" OFF)
 
 # Options: backends
 option (NRI_ENABLE_VK_SUPPORT "Enable VULKAN backend" ON)
-option (NRI_ENABLE_D3D11_SUPPORT "Enable D3D11 backend" ON)
+option (NRI_ENABLE_D3D11_SUPPORT "Enable D3D11 backend" OFF)
 option (NRI_ENABLE_D3D12_SUPPORT "Enable D3D12 backend" ON)
 
 # Options: VK specific
