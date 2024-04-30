@@ -373,20 +373,28 @@ inline void CommandBufferVK::DrawIndexed(const DrawIndexedDesc& drawIndexedDesc)
     vk.CmdDrawIndexed(m_Handle, drawIndexedDesc.indexNum, drawIndexedDesc.instanceNum, drawIndexedDesc.baseIndex, drawIndexedDesc.baseVertex, drawIndexedDesc.baseInstance);
 }
 
-inline void CommandBufferVK::DrawIndirect(const Buffer& buffer, uint64_t offset, uint32_t drawNum, uint32_t stride) {
-    static_assert(sizeof(DrawDesc) == sizeof(VkDrawIndirectCommand));
-
+inline void CommandBufferVK::DrawIndirect(const Buffer& buffer, uint64_t offset, uint32_t drawNum, uint32_t stride, const Buffer* countBuffer, uint64_t countBufferOffset) {
     const VkBuffer bufferHandle = GetVulkanHandle<VkBuffer, BufferVK>(&buffer);
     const auto& vk = m_Device.GetDispatchTable();
-    vk.CmdDrawIndirect(m_Handle, bufferHandle, offset, drawNum, (uint32_t)stride);
+
+    if (countBuffer) {
+        const VkBuffer countBufferHandle = GetVulkanHandle<VkBuffer, BufferVK>(countBuffer);
+        vk.CmdDrawIndirectCount(m_Handle, bufferHandle, offset, countBufferHandle, countBufferOffset, drawNum, (uint32_t)stride);
+    }
+    else
+        vk.CmdDrawIndirect(m_Handle, bufferHandle, offset, drawNum, (uint32_t)stride);
 }
 
-inline void CommandBufferVK::DrawIndexedIndirect(const Buffer& buffer, uint64_t offset, uint32_t drawNum, uint32_t stride) {
-    static_assert(sizeof(DrawIndexedDesc) == sizeof(VkDrawIndexedIndirectCommand));
-
+inline void CommandBufferVK::DrawIndexedIndirect(const Buffer& buffer, uint64_t offset, uint32_t drawNum, uint32_t stride, const Buffer* countBuffer, uint64_t countBufferOffset) {
     const VkBuffer bufferHandle = GetVulkanHandle<VkBuffer, BufferVK>(&buffer);
     const auto& vk = m_Device.GetDispatchTable();
-    vk.CmdDrawIndexedIndirect(m_Handle, bufferHandle, offset, drawNum, (uint32_t)stride);
+
+    if (countBuffer) {
+        const VkBuffer countBufferHandle = GetVulkanHandle<VkBuffer, BufferVK>(countBuffer);
+        vk.CmdDrawIndexedIndirectCount(m_Handle, bufferHandle, offset, countBufferHandle, countBufferOffset, drawNum, (uint32_t)stride);
+    }
+    else
+        vk.CmdDrawIndexedIndirect(m_Handle, bufferHandle, offset, drawNum, (uint32_t)stride);
 }
 
 inline void CommandBufferVK::CopyBuffer(Buffer& dstBuffer, uint64_t dstOffset, const Buffer& srcBuffer, uint64_t srcOffset, uint64_t size) {
