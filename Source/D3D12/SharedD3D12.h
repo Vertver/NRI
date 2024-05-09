@@ -32,8 +32,6 @@ struct DescriptorHeapDesc {
     uint32_t descriptorSize;
 };
 
-DXGI_FORMAT GetShaderFormatForDepth(DXGI_FORMAT format);
-
 MemoryType GetMemoryType(D3D12_HEAP_TYPE heapType, D3D12_HEAP_FLAGS heapFlags);
 MemoryType GetMemoryType(MemoryLocation memoryLocation, const D3D12_RESOURCE_DESC& resourceDesc);
 
@@ -75,6 +73,7 @@ D3D12_RESOURCE_DIMENSION GetResourceDimension(TextureType textureType);
 
 #include "amdags/ags_lib/inc/amd_ags.h"
 #include "nvapi/nvapi.h"
+#include "nvapi/nvShaderExtnEnums.h"
 
 namespace d3d12 {
 #include "D3DExt.h"
